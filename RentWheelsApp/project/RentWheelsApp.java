@@ -1107,10 +1107,38 @@ private String getCarReturnInfo(String carName) {
             "-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 8, 0, 0, 2);");
     card.setPrefWidth(300);
 
-    // Car image placeholder
-    Rectangle imageRect = new Rectangle(260, 150);
-    imageRect.setFill(Color.LIGHTGRAY);
-    imageRect.setStyle("-fx-fill: linear-gradient(to bottom, #e3f2fd, #bbdefb);");
+    // Car image
+    VBox imageContainer = new VBox();
+    imageContainer.setAlignment(Pos.CENTER);
+    imageContainer.setPrefHeight(150);
+    imageContainer.setStyle("-fx-background-color: linear-gradient(to bottom, #e3f2fd, #bbdefb); -fx-background-radius: 4;");
+    
+    try {
+        // Try to load the actual image
+        String imagePath = "/images/cars/" + car.getImagePath();
+        Image image = new Image(getClass().getResourceAsStream(imagePath));
+        
+        if (!image.isError()) {
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(260);
+            imageView.setFitHeight(150);
+            imageView.setPreserveRatio(true);
+            imageView.setSmooth(true);
+            imageContainer.getChildren().add(imageView);
+        } else {
+            throw new Exception("Image not found");
+        }
+    } catch (Exception e) {
+        // Fallback to placeholder with car emoji
+        Label carEmoji = new Label("🚗");
+        carEmoji.setStyle("-fx-font-size: 48px;");
+        Label placeholderText = new Label(car.getName());
+        placeholderText.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        VBox placeholder = new VBox(10);
+        placeholder.setAlignment(Pos.CENTER);
+        placeholder.getChildren().addAll(carEmoji, placeholderText);
+        imageContainer.getChildren().add(placeholder);
+    }
 
     // Car details
     Label nameLabel = new Label(car.getName());
@@ -1194,7 +1222,7 @@ private String getCarReturnInfo(String carName) {
     bottomBox.getChildren().addAll(priceBox, spacer, actionButton);
 
     // Add all components to the card (UPDATED to use statusInfo instead of statusLabel)
-    card.getChildren().addAll(imageRect, nameLabel, yearLabel, specsBox, statusInfo, bottomBox);
+    card.getChildren().addAll(imageContainer, nameLabel, yearLabel, specsBox, statusInfo, bottomBox);
 
     return card;
 }
