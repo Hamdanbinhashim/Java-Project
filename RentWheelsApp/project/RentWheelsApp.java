@@ -38,7 +38,8 @@ public class RentWheelsApp extends Application {
     private User currentUser;
     private ObservableList<Car> cars = FXCollections.observableArrayList();
     private ObservableList<Reservation> reservations = FXCollections.observableArrayList();
-    private ObservableList<Invoice> invoices = FXCollections.observableArrayList();
+    private ObservableList<
+    Invoice> invoices = FXCollections.observableArrayList();
     private boolean isLoginMode = true;
     private List<User> registeredUsers = new ArrayList<>();
     private Timeline availabilityChecker;
@@ -49,11 +50,9 @@ public class RentWheelsApp extends Application {
         registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "ADMIN", "password"));
 
         cars.addAll(
-                new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available",
-                        "tesla_model_s.jpg"),
+                new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available","tesla_model_s.jpg"),
                 new Car("BMW X5", "₹7932.50", "5 Seats", "Automatic", "Hybrid", "Available", "bmw_x5.jpg"),
-                new Car("Mercedes-Benz E-Class", "₹9185.00", "5 Seats", "Automatic", "Petrol", "Available",
-                        "mercedes_e_class.jpg"),
+                new Car("Mercedes-Benz E-Class", "₹9185.00", "5 Seats", "Automatic", "Petrol", "Available","mercedes_e_class.jpg"),
                 new Car("Audi A4", "₹7097.50", "5 Seats", "Automatic", "Diesel", "Available", "audi_a4.jpg"),
                 new Car("Toyota Camry", "₹6845.00", "5 Seats", "Automatic", "Hybrid", "Available", "toyota_camry.jpg"),
                 new Car("Ford Mustang", "₹8350.00", "4 Seats", "Manual", "Petrol", "Available", "ford_mustang.jpg"));
