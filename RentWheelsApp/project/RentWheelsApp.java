@@ -38,8 +38,7 @@ public class RentWheelsApp extends Application {
     private User currentUser;
     private ObservableList<Car> cars = FXCollections.observableArrayList();
     private ObservableList<Reservation> reservations = FXCollections.observableArrayList();
-    private ObservableList<
-    Invoice> invoices = FXCollections.observableArrayList();
+    private ObservableList<Invoice> invoices = FXCollections.observableArrayList();
     private boolean isLoginMode = true;
     private List<User> registeredUsers = new ArrayList<>();
     private Timeline availabilityChecker;
