@@ -54,7 +54,28 @@ public class RentWheelsApp extends Application {
                 new Car("Mercedes-Benz E-Class", "₹9185.00", "5 Seats", "Automatic", "Petrol", "Available","mercedes_e_class.jpg"),
                 new Car("Audi A4", "₹7097.50", "5 Seats", "Automatic", "Diesel", "Available", "audi_a4.jpg"),
                 new Car("Toyota Camry", "₹6845.00", "5 Seats", "Automatic", "Hybrid", "Available", "toyota_camry.jpg"),
-                new Car("Ford Mustang", "₹8350.00", "4 Seats", "Manual", "Petrol", "Available", "ford_mustang.jpg"));
+                new Car("Ford Mustang", "₹8350.00", "4 Seats", "Manual", "Petrol", "Available", "ford_mustang.jpg"),
+                new Car("BMW M340i", "₹9350.00", "5 Seats", "Automatic", "Petrol", "Available","bmw_m340i.jpg"),
+                new Car("Lamborghini Urus", "₹25200.50", "5 Seats", "Automatic", "Petrol", "Available", "lamborghini_urus.jpg"),
+                new Car(" Porsche 911 Turbo S (992)", "₹20580.00", "2 Seats", "Automatic", "Petrol", "Available",""),
+                new Car("Audi Q8", "₹8200.50", "5 Seats", "Automatic", "Petrol", "Available", "porsche_911_Turbo_S.jpg"),
+                new Car("BYD Seal", "₹6845.00", "5 Seats", "Automatic", "Electric", "Available", "byd_seal.jpg"),
+                new Car("Ferrari 488 Pista", "₹24300.00", "2 Seats", "Automatic", "Petrol", "Available", "ferrari_488_pista.jpg"),
+                new Car("Porsche Taycan", "₹10020.00", "4 Seats", "Automatic", "Electric", "Available","porsche_tycan.jpg"),
+                new Car("Lexus ES 300h", "₹7999.50", "4 Seats", "Automatic", "Hybrid", "Available", "lexus_es_300h.jpg"),
+                new Car("Range Rover Velar", "₹8800.00", "5 Seats", "Automatic", "Petrol", "Available","range_rover_velar.jpg"),
+                new Car("Toyota Land Cruiser", "₹10133.50", "5 Seats", "Automatic", "Diesel", "Available", "toyota_land_cruiser.jpg"),
+                new Car("Range Rover SVR", "₹7990.00", "5 Seats", "Automatic", "Petrol", "Available", "range_rover_svr.jpg"),
+                new Car(" BMW M2 ", "₹12350.00", "4 Seats", "Manual", "Petrol", "Available", "bmw_m2.jpg"),
+                new Car("Audi RS7", "₹13500.00", "5 Seats", "Automatic", "Petrol", "Available","audi_rs7.jpg"),
+                new Car("Jaguar f-pace", "₹7800.50", "5 Seats", "Automatic", "Petrol", "Available", "jaguar_f-pace.jpg"),
+                new Car("Lamborghini Huracan Sterrato", "₹24340.00", "2 Seats", "Automatic", "Petrol", "Available","lamborghini_huracan.jpg"),
+                new Car("Toyota Vellfire ", "₹8900.50", "7 Seats", "Automatic", "Petrol", "Available", "toyota_vellfire.jpg"),
+                new Car(" Maserati Quattroporte", "₹6788.00", "4 Seats", "Automatic", "Petrol", "Available", "maserati_quattroporte.jpg"),
+                new Car("BMW M4", "₹28352.00", "2 Seats", "Automatic", "Petrol", "Available", "bmw_m4.jpg"),
+                new Car(" Mercedes G Wagon ", "₹23456.00", "5 Seats", "Automatic", "Petrol", "Available", "mercedes_g_wagon.jpg"),
+                new Car("Mini Cooper S", "₹8998.00", "4 Seats", "Automatic", "Petrol", "Available","mii_cooper_s.jpg"),
+                new Car("Jeep Wrangler", "8500.50", "5 Seats", "Automatic", "Petrol", "Available", "jeep_wrangler.jpg"));
     }
 
     @Override
