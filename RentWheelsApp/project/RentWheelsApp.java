@@ -46,7 +46,7 @@ public class RentWheelsApp extends Application {
     // Sample data
     private void initializeData() {
         // Initialize with admin user
-        registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "a", "p"));
+        registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "ADMIN", "password"));
 
         cars.addAll(
                 new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available","tesla_model_s.jpg"),
