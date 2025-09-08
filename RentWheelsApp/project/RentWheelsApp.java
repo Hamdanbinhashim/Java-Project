@@ -46,7 +46,7 @@ public class RentWheelsApp extends Application {
     // Sample data
     private void initializeData() {
         // Initialize with admin user
-        registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "a", "p"));
+        registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "ADMIN", "password"));
 
         cars.addAll(
                 new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available","tesla_model_s.jpg"),
@@ -76,399 +76,6 @@ public class RentWheelsApp extends Application {
                 new Car(" Mercedes G Wagon ", "₹23456.00", "5 Seats", "Automatic", "Petrol", "Available", "mercedes_g_wagon.jpg"),
                 new Car("Mini Cooper S", "₹8998.00", "4 Seats", "Automatic", "Petrol", "Available","mii_cooper_s.jpg"),
                 new Car("Jeep Wrangler", "8500.50", "5 Seats", "Automatic", "Petrol", "Available", "jeep_wrangler.jpg"));
-    }
-
-    @Override
-    public void start(Stage primaryStage) {
-        this.primaryStage = primaryStage;
-        initializeData();
-
-        primaryStage.setTitle("RentWheels - Premium Car Rental Service");
-        primaryStage.setMaximized(true);
-
-        showLoginScreen();
-        primaryStage.show();
-    }
-
-    private void showLoginScreen() {
-        VBox root = new VBox(20);
-        root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: #f5f5f5;");
-
-        // Main container
-        VBox container = new VBox(30);
-        container.setAlignment(Pos.CENTER);
-        container.setPadding(new Insets(40));
-        container.setMaxWidth(400);
-        container.setStyle(
-                "-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);");
-
-        // Logo and title
-        Label carIcon = new Label("🚗");
-        carIcon.setStyle("-fx-font-size: 48px; -fx-text-fill: #4285f4;");
-
-        Label title = new Label("RentWheels");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 28));
-        title.setStyle("-fx-text-fill: #333;");
-
-        Label subtitle = new Label("Premium Car Rental Service");
-        subtitle.setStyle("-fx-text-fill: #666; -fx-font-size: 14px;");
-
-        VBox header = new VBox(10);
-        header.setAlignment(Pos.CENTER);
-        header.getChildren().addAll(carIcon, title, subtitle);
-
-        // Tab buttons
-        HBox tabButtons = new HBox();
-        tabButtons.setAlignment(Pos.CENTER);
-
-        Button loginTab = new Button("Login");
-        Button registerTab = new Button("Register");
-
-        // Form container that will be updated
-        VBox formContainer = new VBox();
-        formContainer.setAlignment(Pos.CENTER);
-
-        updateTabStyles(loginTab, registerTab);
-        formContainer.getChildren().clear();
-        formContainer.getChildren().add(isLoginMode ? createLoginForm() : createRegisterForm());
-
-        loginTab.setOnAction(e -> {
-            isLoginMode = true;
-            updateTabStyles(loginTab, registerTab);
-            formContainer.getChildren().clear();
-            formContainer.getChildren().add(createLoginForm());
-        });
-
-        registerTab.setOnAction(e -> {
-            isLoginMode = false;
-            updateTabStyles(loginTab, registerTab);
-            formContainer.getChildren().clear();
-            formContainer.getChildren().add(createRegisterForm());
-        });
-
-        tabButtons.getChildren().addAll(loginTab, registerTab);
-
-        container.getChildren().addAll(header, tabButtons, formContainer);
-        root.getChildren().add(container);
-
-        Scene scene = new Scene(root, 1200, 800);
-        primaryStage.setScene(scene);
-    }
-
-    private void updateTabStyles(Button loginTab, Button registerTab) {
-        String activeStyle = "-fx-background-color: transparent; -fx-text-fill: #4285f4; -fx-border-color: transparent transparent #4285f4 transparent; -fx-border-width: 0 0 2 0; -fx-font-weight: bold; -fx-padding: 10 20;";
-        String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: #999; -fx-border-color: transparent; -fx-padding: 10 20;";
-
-        if (isLoginMode) {
-            loginTab.setStyle(activeStyle);
-            registerTab.setStyle(inactiveStyle);
-        } else {
-            loginTab.setStyle(inactiveStyle);
-            registerTab.setStyle(activeStyle);
-        }
-    }
-
-    private VBox createLoginForm() {
-        VBox form = new VBox(15);
-        form.setAlignment(Pos.CENTER);
-
-        Label usernameLabel = new Label("Username");
-        usernameLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Enter Username");
-        usernameField.setStyle(
-                "-fx-background-color: #e8f0fe; -fx-border-color: transparent; -fx-padding: 12; -fx-font-size: 14px;");
-        usernameField.setPrefWidth(300);
-
-        Label passwordLabel = new Label("Password");
-        passwordLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Enter Password");
-        passwordField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        passwordField.setPrefWidth(300);
-
-        Button loginButton = new Button("Login");
-        loginButton.setStyle(
-                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 20; -fx-background-radius: 4; -fx-font-size: 14px;");
-        loginButton.setPrefWidth(300);
-
-        loginButton.setOnAction(e -> {
-            // Check if user exists in registered users
-            User foundUser = null;
-            for (User user : registeredUsers) {
-                if (user.getUsername().equals(usernameField.getText()) &&
-                        user.getPassword().equals(passwordField.getText())) {
-                    foundUser = user;
-                    break;
-                }
-            }
-
-            if (foundUser != null) {
-                currentUser = foundUser;
-                showMainApplication();
-            } else {
-                showAlert("Login Failed",
-                        "Invalid username or password! Please register if you don't have an account.");
-            }
-        });
-
-        VBox usernameBox = new VBox(5);
-        usernameBox.getChildren().addAll(usernameLabel, usernameField);
-
-        VBox passwordBox = new VBox(5);
-        passwordBox.getChildren().addAll(passwordLabel, passwordField);
-
-        form.getChildren().addAll(usernameBox, passwordBox, loginButton);
-
-        return form;
-    }
-
-    private VBox createRegisterForm() {
-        VBox form = new VBox(15);
-        form.setAlignment(Pos.CENTER);
-
-        Label nameLabel = new Label("Full Name");
-        nameLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        TextField nameField = new TextField();
-        nameField.setPromptText("Enter your full name");
-        nameField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        nameField.setPrefWidth(300);
-
-        Label emailLabel = new Label("Email");
-        emailLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        TextField emailField = new TextField();
-        emailField.setPromptText("Enter your email");
-        emailField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        emailField.setPrefWidth(300);
-
-        Label usernameLabel = new Label("Username");
-        usernameLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Choose a username");
-        usernameField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        usernameField.setPrefWidth(300);
-
-        Label passwordLabel = new Label("Password");
-        passwordLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Create a password");
-        passwordField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        passwordField.setPrefWidth(300);
-
-        Label confirmPasswordLabel = new Label("Confirm Password");
-        confirmPasswordLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
-
-        PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField.setPromptText("Confirm your password");
-        confirmPasswordField.setStyle(
-                "-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 12; -fx-font-size: 14px;");
-        confirmPasswordField.setPrefWidth(300);
-
-        Button registerButton = new Button("Register");
-        registerButton.setStyle(
-                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 20; -fx-background-radius: 4; -fx-font-size: 14px;");
-        registerButton.setPrefWidth(300);
-
-        registerButton.setOnAction(e -> {
-            if (nameField.getText().trim().isEmpty() || emailField.getText().trim().isEmpty() ||
-                    usernameField.getText().trim().isEmpty() || passwordField.getText().trim().isEmpty()) {
-                showAlert("Registration Failed", "Please fill in all fields!");
-                return;
-            }
-
-            if (!passwordField.getText().equals(confirmPasswordField.getText())) {
-                showAlert("Registration Failed", "Passwords do not match!");
-                return;
-            }
-
-            if (!emailField.getText().contains("@")) {
-                showAlert("Registration Failed", "Please enter a valid email address!");
-                return;
-            }
-
-            // Check if username already exists
-            boolean usernameExists = false;
-            for (User user : registeredUsers) {
-                if (user.getUsername().equals(usernameField.getText())) {
-                    usernameExists = true;
-                    break;
-                }
-            }
-
-            if (usernameExists) {
-                showAlert("Registration Failed", "Username already exists! Please choose a different username.");
-                return;
-            }
-
-            // Registration successful - add new user
-            User newUser = new User(nameField.getText(), emailField.getText(), usernameField.getText(),
-                    passwordField.getText());
-            registeredUsers.add(newUser);
-
-            showSuccessDialog("Registration successful! Welcome " + nameField.getText()
-                    + "!\n\nYou can now login with:\nUsername: " + usernameField.getText() + "\nPassword: "
-                    + passwordField.getText());
-
-            // Switch back to login tab
-            isLoginMode = true;
-            showLoginScreen();
-        });
-
-        VBox nameBox = new VBox(5);
-        nameBox.getChildren().addAll(nameLabel, nameField);
-
-        VBox emailBox = new VBox(5);
-        emailBox.getChildren().addAll(emailLabel, emailField);
-
-        VBox usernameBox = new VBox(5);
-        usernameBox.getChildren().addAll(usernameLabel, usernameField);
-
-        VBox passwordBox = new VBox(5);
-        passwordBox.getChildren().addAll(passwordLabel, passwordField);
-
-        VBox confirmPasswordBox = new VBox(5);
-        confirmPasswordBox.getChildren().addAll(confirmPasswordLabel, confirmPasswordField);
-
-        form.getChildren().addAll(nameBox, emailBox, usernameBox, passwordBox, confirmPasswordBox, registerButton);
-
-        return form;
-    }
-
-    private void showMainApplication() {
-        BorderPane root = new BorderPane();
-        root.setStyle("-fx-background-color: #f8f9fa;");
-
-        // Header
-        HBox header = createHeader();
-        root.setTop(header);
-
-        // Main content - Available Cars by default
-        VBox mainContent = createAvailableCarsView();
-        root.setCenter(mainContent);
-
-        // START THE AVAILABILITY CHECKER:
-        startAvailabilityChecker();
-
-        Scene scene = new Scene(root, 1200, 800);
-        primaryStage.setScene(scene);
-    }
-
-    private void showAddCarDialog() {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.initOwner(primaryStage);
-        dialog.setTitle("Add New Car");
-
-        VBox content = new VBox(15);
-        content.setPadding(new Insets(30));
-        content.setStyle("-fx-background-color: white;");
-
-        Label title = new Label("Add New Car");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-
-        GridPane form = new GridPane();
-        form.setHgap(15);
-        form.setVgap(15);
-
-        TextField nameField = new TextField();
-        nameField.setPromptText("Car name (e.g., Honda Civic)");
-        nameField.setPrefWidth(200);
-
-        TextField priceField = new TextField();
-        priceField.setPromptText("Price per day (e.g., 5000.00)");
-        priceField.setPrefWidth(200);
-
-        ComboBox<String> seatsCombo = new ComboBox<>();
-        seatsCombo.getItems().addAll("2 Seats", "4 Seats", "5 Seats", "7 Seats", "8 Seats");
-        seatsCombo.setValue("5 Seats");
-
-        ComboBox<String> transmissionCombo = new ComboBox<>();
-        transmissionCombo.getItems().addAll("Manual", "Automatic");
-        transmissionCombo.setValue("Automatic");
-
-        ComboBox<String> fuelCombo = new ComboBox<>();
-        fuelCombo.getItems().addAll("Petrol", "Diesel", "Electric", "Hybrid");
-        fuelCombo.setValue("Petrol");
-
-        form.add(new Label("Car Name:"), 0, 0);
-        form.add(nameField, 1, 0);
-        form.add(new Label("Price per Day:"), 0, 1);
-        form.add(priceField, 1, 1);
-        form.add(new Label("Seats:"), 0, 2);
-        form.add(seatsCombo, 1, 2);
-        form.add(new Label("Transmission:"), 0, 3);
-        form.add(transmissionCombo, 1, 3);
-        form.add(new Label("Fuel Type:"), 0, 4);
-        form.add(fuelCombo, 1, 4);
-
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.setStyle(
-                "-fx-background-color: #f5f5f5; -fx-text-fill: #333; -fx-padding: 10 20; -fx-background-radius: 4;");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        Button addBtn = new Button("Add Car");
-        addBtn.setStyle(
-                "-fx-background-color: #28a745; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 4; -fx-font-weight: bold;");
-        addBtn.setOnAction(e -> {
-            if (nameField.getText().trim().isEmpty() || priceField.getText().trim().isEmpty()) {
-                showAlert("Error", "Please fill in all required fields!");
-                return;
-            }
-
-            try {
-                double price = Double.parseDouble(priceField.getText());
-                String formattedPrice = "₹" + String.format("%.2f", price);
-
-                Car newCar = new Car(
-                        nameField.getText(),
-                        formattedPrice,
-                        seatsCombo.getValue(),
-                        transmissionCombo.getValue(),
-                        fuelCombo.getValue(),
-                        "Available",
-                        "default_car.jpg");
-
-                cars.add(newCar);
-                dialog.close();
-                showSuccessDialog("Car added successfully!");
-
-                // Refresh admin view
-                ((BorderPane) primarySta    private Stage primaryStage;
-    private User currentUser;
-    private ObservableList<Car> cars = FXCollections.observableArrayList();
-    private ObservableList<Reservation> reservations = FXCollections.observableArrayList();
-    private ObservableList<Invoice> invoices = FXCollections.observableArrayList();
-    private boolean isLoginMode = true;
-    private List<User> registeredUsers = new ArrayList<>();
-    private Timeline availabilityChecker;
-
-    // Sample data
-    private void initializeData() {
-        // Initialize with admin user
-        registeredUsers.add(new User("Admin User", "admin@rentwheels.com", "ADMIN", "password"));
-
-        cars.addAll(
-                new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available","tesla_model_s.jpg"),
-                new Car("BMW X5", "₹7932.50", "5 Seats", "Automatic", "Hybrid", "Available", "bmw_x5.jpg"),
-                new Car("Mercedes-Benz E-Class", "₹9185.00", "5 Seats", "Automatic", "Petrol", "Available","mercedes_e_class.jpg"),
-                new Car("Audi A4", "₹7097.50", "5 Seats", "Automatic", "Diesel", "Available", "audi_a4.jpg"),
-                new Car("Toyota Camry", "₹6845.00", "5 Seats", "Automatic", "Hybrid", "Available", "toyota_camry.jpg"),
-                new Car("Ford Mustang", "₹8350.00", "4 Seats", "Manual", "Petrol", "Available", "ford_mustang.jpg"));
     }
 
     @Override
@@ -1450,79 +1057,91 @@ private String getCarReturnInfo(String carName) {
         return content;
     }
 
-    private VBox createAvailableCarsView() {
-        VBox content = new VBox(20);
-        content.setPadding(new Insets(30));
+   private VBox createAvailableCarsView() {
+    VBox content = new VBox(20);
+    content.setPadding(new Insets(30));
 
-        // Header
-        HBox headerBox = new HBox();
-        headerBox.setAlignment(Pos.CENTER_LEFT);
+    // Header (same as before)
+    HBox headerBox = new HBox();
+    headerBox.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label("Available Cars");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
-        title.setStyle("-fx-text-fill: #333;");
+    Label title = new Label("Available Cars");
+    title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+    title.setStyle("-fx-text-fill: #333;");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+    Region spacer = new Region();
+    HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox searchBox = new HBox(10);
-        searchBox.setAlignment(Pos.CENTER_RIGHT);
+    HBox searchBox = new HBox(10);
+    searchBox.setAlignment(Pos.CENTER_RIGHT);
 
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search cars...");
-        searchField.setStyle("-fx-padding: 8 12; -fx-border-color: #ddd; -fx-border-radius: 4;");
-        searchField.setPrefWidth(200);
+    TextField searchField = new TextField();
+    searchField.setPromptText("Search cars...");
+    searchField.setStyle("-fx-padding: 8 12; -fx-border-color: #ddd; -fx-border-radius: 4;");
+    searchField.setPrefWidth(200);
 
-        Button filterBtn = new Button("Filter");
-        filterBtn.setStyle(
-                "-fx-background-color: #f8f9fa; -fx-text-fill: #333; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 8 15;");
+    Button filterBtn = new Button("Filter");
+    filterBtn.setStyle(
+            "-fx-background-color: #f8f9fa; -fx-text-fill: #333; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 8 15;");
 
-        searchBox.getChildren().addAll(searchField, filterBtn);
-        headerBox.getChildren().addAll(title, spacer, searchBox);
+    searchBox.getChildren().addAll(searchField, filterBtn);
+    headerBox.getChildren().addAll(title, spacer, searchBox);
 
-        // Cars grid in a scroll pane
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+    // RESPONSIVE CARS GRID - UPDATED FOR FULL SCREEN UTILIZATION
+    ScrollPane scrollPane = new ScrollPane();
+    scrollPane.setFitToWidth(true);
+    scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+    scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+    scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
-        GridPane carsGrid = new GridPane();
-        carsGrid.setHgap(20);
-        carsGrid.setVgap(20);
-        carsGrid.setPadding(new Insets(20, 0, 20, 0));
+    GridPane carsGrid = new GridPane();
+    carsGrid.setHgap(10); // Reduced gap for more space efficiency
+    carsGrid.setVgap(20);
+    carsGrid.setPadding(new Insets(20, 10, 20, 10)); // Reduced side padding
 
-        int col = 0, row = 0;
-        for (Car car : cars) {
-            VBox carCard = createCarCard(car);
-            carsGrid.add(carCard, col, row);
-
-            col++;
-            if (col >= 3) {
-                col = 0;
-                row++;
-            }
-        }
-
-        scrollPane.setContent(carsGrid);
-
-        content.getChildren().addAll(headerBox, scrollPane);
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        return content;
+    // Set column constraints to distribute available width evenly
+    for (int i = 0; i < 5; i++) {
+        ColumnConstraints colConstraints = new ColumnConstraints();
+        colConstraints.setPercentWidth(20); // 100% / 5 columns = 20% each
+        colConstraints.setHgrow(Priority.ALWAYS);
+        carsGrid.getColumnConstraints().add(colConstraints);
     }
 
-    private VBox createCarCard(Car car) {
+    int col = 0, row = 0;
+    for (Car car : cars) {
+        VBox carCard = createResponsiveCarCard(car);
+        carsGrid.add(carCard, col, row);
+
+        col++;
+        if (col >= 5) {
+            col = 0;
+            row++;
+        }
+    }
+
+    scrollPane.setContent(carsGrid);
+
+    content.getChildren().addAll(headerBox, scrollPane);
+    VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+    return content;
+}
+
+private VBox createResponsiveCarCard(Car car) {
     VBox card = new VBox(15);
     card.setPadding(new Insets(20));
     card.setStyle(
             "-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 8, 0, 0, 2);");
-    card.setPrefWidth(300);
+    
+    // RESPONSIVE: Card will expand to fill available column space
+    card.setMaxWidth(Double.MAX_VALUE); // Allow card to grow
+    card.setPrefWidth(Region.USE_COMPUTED_SIZE);
 
-    // Car image
+    // Car image - UPDATED with responsive dimensions
     VBox imageContainer = new VBox();
     imageContainer.setAlignment(Pos.CENTER);
-    imageContainer.setPrefHeight(150);
+    imageContainer.setPrefHeight(140); // Increased height for better proportion
+    imageContainer.setMaxWidth(Double.MAX_VALUE);
     imageContainer.setStyle("-fx-background-color: linear-gradient(to bottom, #e3f2fd, #bbdefb); -fx-background-radius: 4;");
     
     try {
@@ -1532,8 +1151,8 @@ private String getCarReturnInfo(String carName) {
         
         if (!image.isError()) {
             ImageView imageView = new ImageView(image);
-            imageView.setFitWidth(260);
-            imageView.setFitHeight(150);
+            imageView.setFitWidth(200); // Increased width
+            imageView.setFitHeight(140);
             imageView.setPreserveRatio(true);
             imageView.setSmooth(true);
             imageContainer.getChildren().add(imageView);
@@ -1543,7 +1162,7 @@ private String getCarReturnInfo(String carName) {
     } catch (Exception e) {
         // Fallback to placeholder with car emoji
         Label carEmoji = new Label("🚗");
-        carEmoji.setStyle("-fx-font-size: 48px;");
+        carEmoji.setStyle("-fx-font-size: 42px;"); // Larger emoji
         Label placeholderText = new Label(car.getName());
         placeholderText.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
         VBox placeholder = new VBox(10);
@@ -1552,29 +1171,31 @@ private String getCarReturnInfo(String carName) {
         imageContainer.getChildren().add(placeholder);
     }
 
-    // Car details
+    // Car details - UPDATED with larger fonts for readability
     Label nameLabel = new Label(car.getName());
-    nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+    nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16)); // Increased font size
     nameLabel.setStyle("-fx-text-fill: #333;");
+    nameLabel.setWrapText(true);
+    nameLabel.setMaxWidth(Double.MAX_VALUE);
 
     Label yearLabel = new Label("2022");
-    yearLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
+    yearLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 13px;"); // Increased font size
 
-    // Specifications
-    HBox specsBox = new HBox(15);
+    // Specifications - UPDATED with better spacing
+    VBox specsBox = new VBox(5);
     specsBox.setAlignment(Pos.CENTER_LEFT);
 
     Label seatsLabel = new Label("👥 " + car.getSeats());
     Label transmissionLabel = new Label("⚙️ " + car.getTransmission());
     Label fuelLabel = new Label("⛽ " + car.getFuelType());
 
-    seatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+    seatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;"); // Increased font size
     transmissionLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
     fuelLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
 
     specsBox.getChildren().addAll(seatsLabel, transmissionLabel, fuelLabel);
 
-    // Status information with return date (UPDATED SECTION)
+    // Status information with return date
     VBox statusInfo = new VBox(5);
     statusInfo.setAlignment(Pos.CENTER_LEFT);
     
@@ -1582,32 +1203,35 @@ private String getCarReturnInfo(String carName) {
     
     if (car.getStatus().equals("Available")) {
         statusLabel.setStyle(
-                "-fx-background-color: #e8f5e8; -fx-text-fill: #2e7d32; -fx-padding: 4 8; -fx-background-radius: 12; -fx-font-size: 11px; -fx-font-weight: bold;");
+                "-fx-background-color: #e8f5e8; -fx-text-fill: #2e7d32; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
     } else if (car.getStatus().equals("Booked")) {
         statusLabel.setStyle(
-                "-fx-background-color: #fff3e0; -fx-text-fill: #f57c00; -fx-padding: 4 8; -fx-background-radius: 12; -fx-font-size: 11px; -fx-font-weight: bold;");
+                "-fx-background-color: #fff3e0; -fx-text-fill: #f57c00; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
         
         // Add return date info for booked cars
         String returnInfo = getCarReturnInfo(car.getName());
         if (!returnInfo.isEmpty()) {
             Label returnLabel = new Label("📅 " + returnInfo);
-            returnLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 10px; -fx-font-style: italic;");
+            returnLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px; -fx-font-style: italic;");
             statusInfo.getChildren().add(returnLabel);
         }
     } else {
         statusLabel.setStyle(
-                "-fx-background-color: #ffebee; -fx-text-fill: #c62828; -fx-padding: 4 8; -fx-background-radius: 12; -fx-font-size: 11px; -fx-font-weight: bold;");
+                "-fx-background-color: #ffebee; -fx-text-fill: #c62828; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
     }
     
-    statusInfo.getChildren().add(0, statusLabel); // Add status label first
+    statusInfo.getChildren().add(0, statusLabel);
 
-    // Price and button
-    HBox bottomBox = new HBox();
-    bottomBox.setAlignment(Pos.CENTER_LEFT);
+    // Price and button section - UPDATED for full width utilization
+    VBox bottomSection = new VBox(10);
+    bottomSection.setAlignment(Pos.CENTER);
 
-    VBox priceBox = new VBox(5);
+    // Price section
+    VBox priceBox = new VBox(3);
+    priceBox.setAlignment(Pos.CENTER);
+    
     Label priceLabel = new Label(car.getPrice());
-    priceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+    priceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18)); // Increased font size
     priceLabel.setStyle("-fx-text-fill: #4285f4;");
 
     Label perDayLabel = new Label("per day");
@@ -1615,26 +1239,26 @@ private String getCarReturnInfo(String carName) {
 
     priceBox.getChildren().addAll(priceLabel, perDayLabel);
 
-    Region spacer = new Region();
-    HBox.setHgrow(spacer, Priority.ALWAYS);
-
+    // Button section - UPDATED to use full width
     Button actionButton;
     if (car.getStatus().equals("Available")) {
-        actionButton = new Button("Reserve");
+        actionButton = new Button("Reserve Now");
         actionButton.setStyle(
-                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 8 20; -fx-background-radius: 4; -fx-font-weight: bold;");
+                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 10 0; -fx-background-radius: 4; -fx-font-weight: bold; -fx-font-size: 13px;");
+        actionButton.setMaxWidth(Double.MAX_VALUE); // Make button full width
         actionButton.setOnAction(e -> showReservationDialog(car));
     } else {
         actionButton = new Button("Unavailable");
         actionButton.setStyle(
-                "-fx-background-color: #f5f5f5; -fx-text-fill: #999; -fx-padding: 8 20; -fx-background-radius: 4;");
+                "-fx-background-color: #f5f5f5; -fx-text-fill: #999; -fx-padding: 10 0; -fx-background-radius: 4; -fx-font-size: 13px;");
+        actionButton.setMaxWidth(Double.MAX_VALUE);
         actionButton.setDisable(true);
     }
 
-    bottomBox.getChildren().addAll(priceBox, spacer, actionButton);
+    bottomSection.getChildren().addAll(priceBox, actionButton);
 
-    // Add all components to the card (UPDATED to use statusInfo instead of statusLabel)
-    card.getChildren().addAll(imageContainer, nameLabel, yearLabel, specsBox, statusInfo, bottomBox);
+    // Add all components to the card
+    card.getChildren().addAll(imageContainer, nameLabel, yearLabel, specsBox, statusInfo, bottomSection);
 
     return card;
 }
