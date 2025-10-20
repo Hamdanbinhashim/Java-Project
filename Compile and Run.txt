@@ -1,7 +1,9 @@
-Compile:   javac --module-path "C:\Program Files\Java\javafx-sdk-24.0.2\lib" --add-modules javafx.controls,javafx.fxml RentWheelsApp.java
+Compile : javac --module-path "C:\Program Files\Java\javafx-sdk-24.0.2\lib" --add-modules javafx.controls,javafx.fxml -cp "sqlite-jdbc-3.50.3.0.jar" *.java
 
-Run:       java --module-path "C:\Program Files\Java\javafx-sdk-24.0.2\lib" --add-modules javafx.controls,javafx.fxml RentWheelsApp 
+
+Run : java --module-path "C:\Program Files\Java\javafx-sdk-24.0.2\lib" --add-modules javafx.controls,javafx.fxml -cp ".:sqlite-jdbc-3.50.3.0.jar" RentWheelsApp
 
 Admin credentials
 Username:ADMIN
 Password:password
+
