@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class RentWheelsApp extends Application {
 
@@ -35,10 +36,21 @@ public class RentWheelsApp extends Application {
     private DatabaseManager dbManager;
     private boolean isLoginMode = true;
     private Timeline availabilityChecker;
+    private ScrollPane carsScrollPane;
+    private List<Car> allCars;
+    private List<Button> navButtons = new ArrayList<>(); // To manage all nav buttons
+
+    // Filter controls as instance variables for real-time updates
+    private TextField carSearchField;
+    private ComboBox<String> seatsFilterCombo;
+    private ComboBox<String> transmissionFilterCombo;
+    private ComboBox<String> fuelFilterCombo;
+    private TextField maxPriceFilterField;
 
     private void initializeData() {
         // Initialize database
         dbManager = DatabaseManager.getInstance();
+        allCars = dbManager.getAllCars();
     }
 
     @Override
@@ -313,7 +325,7 @@ public class RentWheelsApp extends Application {
         root.setTop(header);
 
         // Main content - Available Cars by default
-        VBox mainContent = createAvailableCarsView();
+        BorderPane mainContent = createAvailableCarsView();
         root.setCenter(mainContent);
 
         // START THE AVAILABILITY CHECKER:
@@ -404,6 +416,7 @@ public class RentWheelsApp extends Application {
                 if (dbManager.insertCar(newCar)) {
                     dialog.close();
                     showSuccessDialog("Car added successfully!");
+                    refreshAvailableCarsView(); // Real-time update
                     ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAdminCarsView());
                 } else {
                     showAlert("Error", "Failed to add car to database!");
@@ -430,12 +443,10 @@ public class RentWheelsApp extends Application {
         List<Reservation> allReservations = dbManager.getAllReservations();
 
         for (Reservation reservation : allReservations) {
-            // Check if reservation has ended
             if (reservation.getActualEndDate() != null &&
                     !today.isBefore(reservation.getActualEndDate()) &&
-                    reservation.getStatus().equals("Upcoming")) {
+                    "Upcoming".equals(reservation.getStatus())) {
 
-                // Mark reservation as completed and make car available
                 if (dbManager.updateReservationStatus(reservation.getCarName(),
                         reservation.getCustomerName(), "Completed") &&
                         dbManager.updateCarStatus(reservation.getCarName(), "Available")) {
@@ -445,10 +456,7 @@ public class RentWheelsApp extends Application {
         }
 
         if (anyCarReturned) {
-            // Refresh the view if any cars were returned
-            Platform.runLater(() -> {
-                ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAvailableCarsView());
-            });
+            refreshAvailableCarsView(); // Real-time update
         }
     }
 
@@ -485,7 +493,6 @@ public class RentWheelsApp extends Application {
             availabilityChecker.stop();
         }
     
-        // Check every 30 seconds (you can adjust this)
         availabilityChecker = new Timeline(new KeyFrame(Duration.seconds(30), e -> checkAndUpdateCarAvailability()));
         availabilityChecker.setCycleCount(Timeline.INDEFINITE);
         availabilityChecker.play();
@@ -570,7 +577,6 @@ public class RentWheelsApp extends Application {
                 double price = Double.parseDouble(priceField.getText());
                 String formattedPrice = "₹" + String.format("%.2f", price);
 
-                // Update car properties
                 car.setName(nameField.getText());
                 car.setPrice(formattedPrice);
                 car.setSeats(seatsCombo.getValue());
@@ -581,6 +587,7 @@ public class RentWheelsApp extends Application {
                 if (dbManager.updateCar(car)) {
                     dialog.close();
                     showSuccessDialog("Car updated successfully!");
+                    refreshAvailableCarsView(); // Real-time update
                     ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAdminCarsView());
                 } else {
                     showAlert("Error", "Failed to update car in database!");
@@ -625,7 +632,6 @@ public class RentWheelsApp extends Application {
     roleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: "
             + (user.getUsername().equals("ADMIN") ? "#ff6b35" : "#4285f4") + ";");
 
-    // FIX: Count user's reservations using database
     List<Reservation> userReservations = dbManager.getUserReservations(user.getName());
     Label reservationsLabel = new Label("Total Reservations: " + userReservations.size());
 
@@ -647,14 +653,27 @@ public class RentWheelsApp extends Application {
     dialog.show();
 }
 
+    private void setActiveNavButton(Button activeButton) {
+        String activeStyle = "-fx-background-color: transparent; -fx-text-fill: #4285f4; -fx-font-weight: bold; -fx-border-color: transparent transparent #4285f4 transparent; -fx-border-width: 0 0 2 0; -fx-padding: 8 0;";
+        String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: #666; -fx-padding: 8 0;";
+
+        for (Button btn : navButtons) {
+            btn.setStyle(inactiveStyle);
+        }
+        if (activeButton != null) {
+            activeButton.setStyle(activeStyle);
+        }
+    }
+
     private HBox createHeader() {
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(15, 20, 15, 20));
         header.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+        navButtons.clear(); // Clear previous buttons before creating new ones
 
         // Logo
-        Label logo = new Label("🚗 RentWheels");
+        Label logo = new Label("🚗 RentWheels  ");
         logo.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #4285f4;");
 
         // Navigation
@@ -665,40 +684,20 @@ public class RentWheelsApp extends Application {
         Button reservationsBtn = new Button("My Reservations");
         Button invoicesBtn = new Button("My Invoices");
 
-        String activeStyle = "-fx-background-color: transparent; -fx-text-fill: #4285f4; -fx-font-weight: bold; -fx-border-color: transparent transparent #4285f4 transparent; -fx-border-width: 0 0 2 0; -fx-padding: 8 0;";
-        String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: #666; -fx-padding: 8 0;";
-
-        availableCarsBtn.setStyle(activeStyle);
-        reservationsBtn.setStyle(inactiveStyle);
-        invoicesBtn.setStyle(inactiveStyle);
+        navButtons.addAll(List.of(availableCarsBtn, reservationsBtn, invoicesBtn));
 
         availableCarsBtn.setOnAction(e -> {
-            availableCarsBtn.setStyle(activeStyle);
-            reservationsBtn.setStyle(inactiveStyle);
-            invoicesBtn.setStyle(inactiveStyle);
-            if (isAdmin()) {
-                resetAdminButtonStyles();
-            }
+            setActiveNavButton(availableCarsBtn);
             ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAvailableCarsView());
         });
 
         reservationsBtn.setOnAction(e -> {
-            availableCarsBtn.setStyle(inactiveStyle);
-            reservationsBtn.setStyle(activeStyle);
-            invoicesBtn.setStyle(inactiveStyle);
-            if (isAdmin()) {
-                resetAdminButtonStyles();
-            }
+            setActiveNavButton(reservationsBtn);
             ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createReservationsView());
         });
 
         invoicesBtn.setOnAction(e -> {
-            availableCarsBtn.setStyle(inactiveStyle);
-            reservationsBtn.setStyle(inactiveStyle);
-            invoicesBtn.setStyle(activeStyle);
-            if (isAdmin()) {
-                resetAdminButtonStyles();
-            }
+            setActiveNavButton(invoicesBtn);
             ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createInvoicesView());
         });
 
@@ -708,26 +707,23 @@ public class RentWheelsApp extends Application {
         if (isAdmin()) {
             Button adminCarsBtn = new Button("Admin: Manage Cars");
             Button adminUsersBtn = new Button("Admin: Manage Users");
-
-            adminCarsBtn.setStyle(inactiveStyle);
-            adminUsersBtn.setStyle(inactiveStyle);
+            
+            navButtons.addAll(List.of(adminCarsBtn, adminUsersBtn));
 
             adminCarsBtn.setOnAction(e -> {
-                resetAllButtonStyles(availableCarsBtn, reservationsBtn, invoicesBtn);
-                adminCarsBtn.setStyle(activeStyle);
-                adminUsersBtn.setStyle(inactiveStyle);
+                setActiveNavButton(adminCarsBtn);
                 ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAdminCarsView());
             });
 
             adminUsersBtn.setOnAction(e -> {
-                resetAllButtonStyles(availableCarsBtn, reservationsBtn, invoicesBtn);
-                adminCarsBtn.setStyle(inactiveStyle);
-                adminUsersBtn.setStyle(activeStyle);
+                setActiveNavButton(adminUsersBtn);
                 ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAdminUsersView());
             });
 
             navigation.getChildren().addAll(adminCarsBtn, adminUsersBtn);
         }
+        
+        setActiveNavButton(availableCarsBtn); // Set the default active button
 
         // Right side
         HBox rightSide = new HBox(15);
@@ -782,7 +778,6 @@ public class RentWheelsApp extends Application {
     VBox content = new VBox(20);
     content.setPadding(new Insets(30));
 
-    // Header
     HBox headerBox = new HBox();
     headerBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -800,54 +795,43 @@ public class RentWheelsApp extends Application {
 
     headerBox.getChildren().addAll(title, spacer, addCarBtn);
 
-    // Get cars from database
     List<Car> carsList = dbManager.getAllCars();
-    System.out.println("Displaying " + carsList.size() + " cars in admin view");
 
-    // Create table
     TableView<Car> table = new TableView<>();
     ObservableList<Car> observableCarsList = FXCollections.observableArrayList(carsList);
     table.setItems(observableCarsList);
     table.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0;");
     
-    // If no data, show placeholder
     if (carsList.isEmpty()) {
         Label noDataLabel = new Label("No cars in database. Click 'Add New Car' to add cars.");
         noDataLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 14px; -fx-padding: 50px;");
         table.setPlaceholder(noDataLabel);
     }
 
-    // Car Name column
     TableColumn<Car, String> nameCol = new TableColumn<>("Car Name");
     nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
     nameCol.setPrefWidth(200);
 
-    // Price/Day column
     TableColumn<Car, String> priceCol = new TableColumn<>("Price/Day");
     priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
     priceCol.setPrefWidth(120);
 
-    // Seats column
     TableColumn<Car, String> seatsCol = new TableColumn<>("Seats");
     seatsCol.setCellValueFactory(new PropertyValueFactory<>("seats"));
     seatsCol.setPrefWidth(100);
 
-    // Transmission column
     TableColumn<Car, String> transmissionCol = new TableColumn<>("Transmission");
     transmissionCol.setCellValueFactory(new PropertyValueFactory<>("transmission"));
     transmissionCol.setPrefWidth(120);
 
-    // Fuel Type column
     TableColumn<Car, String> fuelCol = new TableColumn<>("Fuel Type");
     fuelCol.setCellValueFactory(new PropertyValueFactory<>("fuelType"));
     fuelCol.setPrefWidth(100);
 
-    // Status column
     TableColumn<Car, String> statusCol = new TableColumn<>("Status");
     statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
     statusCol.setPrefWidth(100);
 
-    // Actions column
     TableColumn<Car, Void> actionsCol = new TableColumn<>("Actions");
     actionsCol.setPrefWidth(250);
 
@@ -872,19 +856,13 @@ public class RentWheelsApp extends Application {
 
             toggleBtn.setOnAction(e -> {
                 Car car = getTableView().getItems().get(getIndex());
-                String newStatus;
-                if (car.getStatus().equals("Available")) {
-                    newStatus = "Unavailable";
-                } else if (car.getStatus().equals("Unavailable")) {
-                    newStatus = "Available";
-                } else {
-                    newStatus = "Available"; // Default for Booked status
-                }
+                String newStatus = car.getStatus().equals("Available") ? "Unavailable" : "Available";
                 
                 if (dbManager.updateCarStatus(car.getName(), newStatus)) {
                     car.setStatus(newStatus);
                     getTableView().refresh();
                     showSuccessDialog("Car status updated to: " + newStatus);
+                    refreshAvailableCarsView(); // Real-time update
                 } else {
                     showAlert("Error", "Failed to update car status");
                 }
@@ -892,7 +870,6 @@ public class RentWheelsApp extends Application {
 
             deleteBtn.setOnAction(e -> {
                 Car car = getTableView().getItems().get(getIndex());
-
                 Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
                 confirmAlert.setTitle("Delete Car");
                 confirmAlert.setHeaderText(null);
@@ -902,12 +879,12 @@ public class RentWheelsApp extends Application {
                     if (dbManager.deleteCar(car.getName())) {
                         getTableView().getItems().remove(car);
                         showSuccessDialog("Car deleted successfully!");
+                        refreshAvailableCarsView(); // Real-time update
                     } else {
                         showAlert("Error", "Failed to delete car");
                     }
                 }
             });
-
             buttonBox.getChildren().addAll(editBtn, toggleBtn, deleteBtn);
         }
 
@@ -929,7 +906,6 @@ public class RentWheelsApp extends Application {
     VBox content = new VBox(20);
     content.setPadding(new Insets(30));
 
-    // Header
     HBox headerBox = new HBox();
     headerBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -940,7 +916,6 @@ public class RentWheelsApp extends Application {
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
 
-    // FIX: Get users from database instead of registeredUsers variable
     List<User> users = dbManager.getAllUsers();
     Label totalUsersLabel = new Label("Total Users: " + users.size());
     totalUsersLabel.setStyle(
@@ -948,13 +923,10 @@ public class RentWheelsApp extends Application {
 
     headerBox.getChildren().addAll(title, spacer, totalUsersLabel);
 
-    // Users management table - USE DATABASE DATA
     TableView<User> table = new TableView<>();
-    // FIX: Use the users list we already retrieved
     table.setItems(FXCollections.observableArrayList(users));
     table.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0;");
 
-    // Rest of your table setup code...
     TableColumn<User, String> nameCol = new TableColumn<>("Full Name");
     nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
     nameCol.setPrefWidth(200);
@@ -968,14 +940,12 @@ public class RentWheelsApp extends Application {
     usernameCol.setPrefWidth(150);
 
     TableColumn<User, String> roleCol = new TableColumn<>("Role");
-    roleCol.setCellValueFactory(cellData -> {
-        String username = cellData.getValue().getUsername();
-        return new SimpleStringProperty(username.equals("ADMIN") ? "Administrator" : "Customer");
-    });
+    roleCol.setCellValueFactory(cellData -> 
+        new SimpleStringProperty(cellData.getValue().getUsername().equals("ADMIN") ? "Administrator" : "Customer"));
     roleCol.setPrefWidth(120);
 
     TableColumn<User, Void> actionsCol = new TableColumn<>("Actions");
-    actionsCol.setPrefWidth(150);
+    actionsCol.setPrefWidth(160);
 
     actionsCol.setCellFactory(col -> new TableCell<User, Void>() {
         private final HBox buttonBox = new HBox(5);
@@ -988,10 +958,7 @@ public class RentWheelsApp extends Application {
             deleteBtn.setStyle(
                     "-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 3; -fx-font-size: 10px;");
 
-            viewBtn.setOnAction(e -> {
-                User user = getTableView().getItems().get(getIndex());
-                showUserDetailsDialog(user);
-            });
+            viewBtn.setOnAction(e -> showUserDetailsDialog(getTableView().getItems().get(getIndex())));
 
             deleteBtn.setOnAction(e -> {
                 User user = getTableView().getItems().get(getIndex());
@@ -1015,7 +982,6 @@ public class RentWheelsApp extends Application {
                     }
                 }
             });
-
             buttonBox.getChildren().addAll(viewBtn, deleteBtn);
         }
 
@@ -1026,15 +992,10 @@ public class RentWheelsApp extends Application {
                 setGraphic(null);
             } else {
                 User user = getTableView().getItems().get(getIndex());
-                if (user.getUsername().equals("ADMIN")) {
-                    deleteBtn.setDisable(true);
-                    deleteBtn.setStyle(
-                            "-fx-background-color: #cccccc; -fx-text-fill: #666; -fx-padding: 3 8; -fx-background-radius: 3; -fx-font-size: 10px;");
-                } else {
-                    deleteBtn.setDisable(false);
-                    deleteBtn.setStyle(
-                            "-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 3; -fx-font-size: 10px;");
-                }
+                deleteBtn.setDisable(user.getUsername().equals("ADMIN"));
+                deleteBtn.setStyle(user.getUsername().equals("ADMIN") ?
+                        "-fx-background-color: #cccccc; -fx-text-fill: #666; -fx-padding: 3 8; -fx-background-radius: 3; -fx-font-size: 10px;" :
+                        "-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 3; -fx-font-size: 10px;");
                 setGraphic(buttonBox);
             }
         }
@@ -1048,77 +1009,158 @@ public class RentWheelsApp extends Application {
     return content;
 }
 
-    private VBox createAvailableCarsView() {
-        VBox content = new VBox(20);
+    private BorderPane createAvailableCarsView() {
+        BorderPane content = new BorderPane();
         content.setPadding(new Insets(30));
-
-        // Header (same as before)
+    
         HBox headerBox = new HBox();
         headerBox.setAlignment(Pos.CENTER_LEFT);
-
         Label title = new Label("Available Cars");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
         title.setStyle("-fx-text-fill: #333;");
+        headerBox.getChildren().add(title);
+        content.setTop(headerBox);
+    
+        VBox filterPanel = new VBox(15);
+        filterPanel.setPadding(new Insets(20));
+        filterPanel.setPrefWidth(250);
+        filterPanel.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e0e0e0; -fx-border-width: 0 1 0 0;");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label filterTitle = new Label("Filter & Search");
+        filterTitle.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+    
+        carSearchField = new TextField();
+        carSearchField.setPromptText("Search by car name...");
+    
+        seatsFilterCombo = new ComboBox<>();
+        seatsFilterCombo.setPromptText("All Seats");
+        seatsFilterCombo.getItems().addAll("All Seats", "2 Seats", "4 Seats", "5 Seats", "7 Seats", "8 Seats");
+        seatsFilterCombo.setValue("All Seats");
+        seatsFilterCombo.setMaxWidth(Double.MAX_VALUE);
+    
+        transmissionFilterCombo = new ComboBox<>();
+        transmissionFilterCombo.setPromptText("All Transmissions");
+        transmissionFilterCombo.getItems().addAll("All", "Manual", "Automatic");
+        transmissionFilterCombo.setValue("All");
+        transmissionFilterCombo.setMaxWidth(Double.MAX_VALUE);
+    
+        fuelFilterCombo = new ComboBox<>();
+        fuelFilterCombo.setPromptText("All Fuel Types");
+        fuelFilterCombo.getItems().addAll("All", "Petrol", "Diesel", "Electric", "Hybrid");
+        fuelFilterCombo.setValue("All");
+        fuelFilterCombo.setMaxWidth(Double.MAX_VALUE);
 
-        HBox searchBox = new HBox(10);
-        searchBox.setAlignment(Pos.CENTER_RIGHT);
+        maxPriceFilterField = new TextField();
+        maxPriceFilterField.setPromptText("Max Price/day");
+        
+        filterPanel.getChildren().addAll(
+            filterTitle,
+            new Label("Car Name:"), carSearchField,
+            new Label("Seats:"), seatsFilterCombo,
+            new Label("Transmission:"), transmissionFilterCombo,
+            new Label("Fuel Type:"), fuelFilterCombo,
+            new Label("Max Price:"), maxPriceFilterField
+        );
+        content.setLeft(filterPanel);
 
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search cars...");
-        searchField.setStyle("-fx-padding: 8 12; -fx-border-color: #ddd; -fx-border-radius: 4;");
-        searchField.setPrefWidth(200);
+        Runnable filterAction = () -> filterAndDisplayCars(
+            carSearchField.getText(),
+            seatsFilterCombo.getValue(),
+            transmissionFilterCombo.getValue(),
+            fuelFilterCombo.getValue(),
+            maxPriceFilterField.getText()
+        );
 
-        Button filterBtn = new Button("Filter");
-        filterBtn.setStyle(
-                "-fx-background-color: #f8f9fa; -fx-text-fill: #333; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 8 15;");
+        carSearchField.textProperty().addListener((obs, old, aNew) -> filterAction.run());
+        seatsFilterCombo.valueProperty().addListener((obs, old, aNew) -> filterAction.run());
+        transmissionFilterCombo.valueProperty().addListener((obs, old, aNew) -> filterAction.run());
+        fuelFilterCombo.valueProperty().addListener((obs, old, aNew) -> filterAction.run());
+        maxPriceFilterField.textProperty().addListener((obs, old, aNew) -> filterAction.run());
+    
+        carsScrollPane = new ScrollPane();
+        carsScrollPane.setFitToWidth(true);
+        carsScrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        carsScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        carsScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        BorderPane.setMargin(carsScrollPane, new Insets(0, 0, 0, 20));
+    
+        updateCarsGrid(allCars);
+        content.setCenter(carsScrollPane);
+    
+        return content;
+    }
+    
+    private void filterAndDisplayCars(String name, String seats, String transmission, String fuel, String maxPriceStr) {
+        List<Car> filteredCars = new ArrayList<>(allCars);
+    
+        if (name != null && !name.trim().isEmpty()) {
+            filteredCars = filteredCars.stream()
+                .filter(car -> car.getName().toLowerCase().contains(name.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+    
+        if (seats != null && !seats.equals("All Seats")) {
+            filteredCars = filteredCars.stream()
+                .filter(car -> car.getSeats().equals(seats))
+                .collect(Collectors.toList());
+        }
+    
+        if (transmission != null && !transmission.equals("All")) {
+            filteredCars = filteredCars.stream()
+                .filter(car -> car.getTransmission().equals(transmission))
+                .collect(Collectors.toList());
+        }
+    
+        if (fuel != null && !fuel.equals("All")) {
+            filteredCars = filteredCars.stream()
+                .filter(car -> car.getFuelType().equals(fuel))
+                .collect(Collectors.toList());
+        }
 
-        searchBox.getChildren().addAll(searchField, filterBtn);
-        headerBox.getChildren().addAll(title, spacer, searchBox);
-
-        // Get cars from database
-        List<Car> cars = dbManager.getAllCars();
-
-        // RESPONSIVE CARS GRID - UPDATED FOR FULL SCREEN UTILIZATION
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-
+        if (maxPriceStr != null && !maxPriceStr.trim().isEmpty()) {
+            try {
+                double maxPrice = Double.parseDouble(maxPriceStr);
+                filteredCars = filteredCars.stream()
+                    .filter(car -> {
+                        double carPrice = Double.parseDouble(car.getPrice().replace("₹", "").replace(",", ""));
+                        return carPrice <= maxPrice;
+                    })
+                    .collect(Collectors.toList());
+            } catch (NumberFormatException e) {
+                // Ignore
+            }
+        }
+    
+        updateCarsGrid(filteredCars);
+    }
+    
+    private void updateCarsGrid(List<Car> cars) {
         GridPane carsGrid = new GridPane();
-        carsGrid.setHgap(10); // Reduced gap for more space efficiency
+        carsGrid.setHgap(20);
         carsGrid.setVgap(20);
-        carsGrid.setPadding(new Insets(20, 10, 20, 10)); // Reduced side padding
-
-        // Set column constraints to distribute available width evenly
-        for (int i = 0; i < 5; i++) {
+        carsGrid.setPadding(new Insets(20, 10, 20, 10));
+    
+        int numColumns = 4;
+        for (int i = 0; i < numColumns; i++) {
             ColumnConstraints colConstraints = new ColumnConstraints();
-            colConstraints.setPercentWidth(20); // 100% / 5 columns = 20% each
+            colConstraints.setPercentWidth(100.0 / numColumns);
             colConstraints.setHgrow(Priority.ALWAYS);
             carsGrid.getColumnConstraints().add(colConstraints);
         }
-
+    
         int col = 0, row = 0;
         for (Car car : cars) {
             VBox carCard = createResponsiveCarCard(car);
             carsGrid.add(carCard, col, row);
-
+    
             col++;
-            if (col >= 5) {
+            if (col >= numColumns) {
                 col = 0;
                 row++;
             }
         }
-
-        scrollPane.setContent(carsGrid);
-
-        content.getChildren().addAll(headerBox, scrollPane);
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        return content;
+    
+        carsScrollPane.setContent(carsGrid);
     }
 
     private VBox createResponsiveCarCard(Car car) {
@@ -1127,26 +1169,22 @@ public class RentWheelsApp extends Application {
         card.setStyle(
                 "-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 8, 0, 0, 2);");
 
-        // RESPONSIVE: Card will expand to fill available column space
-        card.setMaxWidth(Double.MAX_VALUE); // Allow card to grow
+        card.setMaxWidth(Double.MAX_VALUE);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
 
-        // Car image - UPDATED with responsive dimensions
         VBox imageContainer = new VBox();
         imageContainer.setAlignment(Pos.CENTER);
-        imageContainer.setPrefHeight(140); // Increased height for better proportion
+        imageContainer.setPrefHeight(140);
         imageContainer.setMaxWidth(Double.MAX_VALUE);
         imageContainer.setStyle(
                 "-fx-background-color: linear-gradient(to bottom, #e3f2fd, #bbdefb); -fx-background-radius: 4;");
 
         try {
-            // Try to load the actual image
             String imagePath = "/images/cars/" + car.getImagePath();
             Image image = new Image(getClass().getResourceAsStream(imagePath));
-
             if (!image.isError()) {
                 ImageView imageView = new ImageView(image);
-                imageView.setFitWidth(200); // Increased width
+                imageView.setFitWidth(200);
                 imageView.setFitHeight(140);
                 imageView.setPreserveRatio(true);
                 imageView.setSmooth(true);
@@ -1155,55 +1193,43 @@ public class RentWheelsApp extends Application {
                 throw new Exception("Image not found");
             }
         } catch (Exception e) {
-            // Fallback to placeholder with car emoji
             Label carEmoji = new Label("🚗");
-            carEmoji.setStyle("-fx-font-size: 42px;"); // Larger emoji
+            carEmoji.setStyle("-fx-font-size: 42px;");
             Label placeholderText = new Label(car.getName());
             placeholderText.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
-            VBox placeholder = new VBox(10);
+            VBox placeholder = new VBox(10, carEmoji, placeholderText);
             placeholder.setAlignment(Pos.CENTER);
-            placeholder.getChildren().addAll(carEmoji, placeholderText);
             imageContainer.getChildren().add(placeholder);
         }
 
-        // Car details - UPDATED with larger fonts for readability
         Label nameLabel = new Label(car.getName());
-        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16)); // Increased font size
+        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
         nameLabel.setStyle("-fx-text-fill: #333;");
         nameLabel.setWrapText(true);
         nameLabel.setMaxWidth(Double.MAX_VALUE);
 
         Label yearLabel = new Label("2022");
-        yearLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 13px;"); // Increased font size
+        yearLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 13px;");
 
-        // Specifications - UPDATED with better spacing
         VBox specsBox = new VBox(5);
         specsBox.setAlignment(Pos.CENTER_LEFT);
-
         Label seatsLabel = new Label("👥 " + car.getSeats());
         Label transmissionLabel = new Label("⚙️ " + car.getTransmission());
         Label fuelLabel = new Label("⛽ " + car.getFuelType());
-
-        seatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;"); // Increased font size
+        seatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
         transmissionLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
         fuelLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
-
         specsBox.getChildren().addAll(seatsLabel, transmissionLabel, fuelLabel);
 
-        // Status information with return date
         VBox statusInfo = new VBox(5);
         statusInfo.setAlignment(Pos.CENTER_LEFT);
-
         Label statusLabel = new Label(car.getStatus());
-
         if (car.getStatus().equals("Available")) {
             statusLabel.setStyle(
                     "-fx-background-color: #e8f5e8; -fx-text-fill: #2e7d32; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
         } else if (car.getStatus().equals("Booked")) {
             statusLabel.setStyle(
                     "-fx-background-color: #fff3e0; -fx-text-fill: #f57c00; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
-
-            // Add return date info for booked cars
             String returnInfo = getCarReturnInfo(car.getName());
             if (!returnInfo.isEmpty()) {
                 Label returnLabel = new Label("📅 " + returnInfo);
@@ -1214,33 +1240,25 @@ public class RentWheelsApp extends Application {
             statusLabel.setStyle(
                     "-fx-background-color: #ffebee; -fx-text-fill: #c62828; -fx-padding: 5 10; -fx-background-radius: 12; -fx-font-size: 12px; -fx-font-weight: bold;");
         }
-
         statusInfo.getChildren().add(0, statusLabel);
 
-        // Price and button section - UPDATED for full width utilization
         VBox bottomSection = new VBox(10);
         bottomSection.setAlignment(Pos.CENTER);
-
-        // Price section
         VBox priceBox = new VBox(3);
         priceBox.setAlignment(Pos.CENTER);
-
         Label priceLabel = new Label(car.getPrice());
-        priceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18)); // Increased font size
+        priceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
         priceLabel.setStyle("-fx-text-fill: #4285f4;");
-
         Label perDayLabel = new Label("per day");
         perDayLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
-
         priceBox.getChildren().addAll(priceLabel, perDayLabel);
 
-        // Button section - UPDATED to use full width
         Button actionButton;
         if (car.getStatus().equals("Available")) {
             actionButton = new Button("Reserve Now");
             actionButton.setStyle(
                     "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 10 0; -fx-background-radius: 4; -fx-font-weight: bold; -fx-font-size: 13px;");
-            actionButton.setMaxWidth(Double.MAX_VALUE); // Make button full width
+            actionButton.setMaxWidth(Double.MAX_VALUE);
             actionButton.setOnAction(e -> showReservationDialog(car));
         } else {
             actionButton = new Button("Unavailable");
@@ -1249,10 +1267,8 @@ public class RentWheelsApp extends Application {
             actionButton.setMaxWidth(Double.MAX_VALUE);
             actionButton.setDisable(true);
         }
-
         bottomSection.getChildren().addAll(priceBox, actionButton);
 
-        // Add all components to the card
         card.getChildren().addAll(imageContainer, nameLabel, yearLabel, specsBox, statusInfo, bottomSection);
 
         return card;
@@ -1264,8 +1280,7 @@ public class RentWheelsApp extends Application {
         dialog.initOwner(primaryStage);
         dialog.setTitle("Reserve Car");
 
-        // Create backdrop effect
-        VBox backdrop = new VBox();
+        VBox backdrop = new VBox(new VBox());
         backdrop.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5);");
         backdrop.setAlignment(Pos.CENTER);
 
@@ -1274,65 +1289,45 @@ public class RentWheelsApp extends Application {
         dialogContent.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
         dialogContent.setMaxWidth(500);
 
-        // Car info
         HBox carInfo = new HBox(20);
         carInfo.setAlignment(Pos.CENTER_LEFT);
-
-        Rectangle carImage = new Rectangle(100, 60);
-        carImage.setFill(Color.LIGHTBLUE);
-
+        Rectangle carImage = new Rectangle(100, 60, Color.LIGHTBLUE);
         VBox carDetails = new VBox(5);
         Label carName = new Label(car.getName() + " (2022)");
         carName.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
         Label carSpecs = new Label(car.getSeats() + " • " + car.getTransmission() + " • " + car.getFuelType());
         carSpecs.setStyle("-fx-text-fill: #666;");
-
         Label carPrice = new Label(car.getPrice() + " per day");
         carPrice.setStyle("-fx-text-fill: #4285f4; -fx-font-weight: bold;");
-
         carDetails.getChildren().addAll(carName, carSpecs, carPrice);
         carInfo.getChildren().addAll(carImage, carDetails);
 
-        // Date selection
         GridPane dateGrid = new GridPane();
         dateGrid.setHgap(20);
         dateGrid.setVgap(10);
-
-        Label startDateLabel = new Label("Start Date");
         DatePicker startDatePicker = new DatePicker(LocalDate.now());
         startDatePicker.setStyle("-fx-pref-width: 200;");
-
-        Label endDateLabel = new Label("End Date");
         DatePicker endDatePicker = new DatePicker(LocalDate.now().plusDays(1));
         endDatePicker.setStyle("-fx-pref-width: 200;");
-
-        dateGrid.add(startDateLabel, 0, 0);
+        dateGrid.add(new Label("Start Date"), 0, 0);
         dateGrid.add(startDatePicker, 0, 1);
-        dateGrid.add(endDateLabel, 1, 0);
+        dateGrid.add(new Label("End Date"), 1, 0);
         dateGrid.add(endDatePicker, 1, 1);
 
-        // Cost calculation
         VBox costBox = new VBox(10);
-
         Label daysLabel = new Label("Days: 0");
         Label dailyRateLabel = new Label("Daily Rate: " + car.getPrice());
         Label totalCostLabel = new Label("Total Cost: ₹0.00");
         totalCostLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
         costBox.getChildren().addAll(daysLabel, dailyRateLabel, totalCostLabel);
 
-        // Update cost calculation
         Runnable updateCost = () -> {
             LocalDate start = startDatePicker.getValue();
             LocalDate end = endDatePicker.getValue();
             if (start != null && end != null && !end.isBefore(start)) {
-                long days = ChronoUnit.DAYS.between(start, end);
-                if (days == 0)
-                    days = 1;
+                long days = Math.max(1, ChronoUnit.DAYS.between(start, end));
                 double dailyRate = Double.parseDouble(car.getPrice().replace("₹", "").replace(",", ""));
                 double total = days * dailyRate;
-
                 daysLabel.setText("Days: " + days);
                 totalCostLabel.setText("Total Cost: ₹" + String.format("%.2f", total));
             }
@@ -1342,81 +1337,178 @@ public class RentWheelsApp extends Application {
         endDatePicker.setOnAction(e -> updateCost.run());
         updateCost.run();
 
-        // Buttons
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
-
         Button cancelBtn = new Button("Cancel");
         cancelBtn.setStyle(
                 "-fx-background-color: #f5f5f5; -fx-text-fill: #333; -fx-padding: 10 20; -fx-background-radius: 4;");
         cancelBtn.setOnAction(e -> dialog.close());
-
-        Button confirmBtn = new Button("✓ Confirm Reservation");
+        Button confirmBtn = new Button("✓ Proceed to Payment");
         confirmBtn.setStyle(
                 "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 4; -fx-font-weight: bold;");
         confirmBtn.setOnAction(e -> {
-    LocalDate start = startDatePicker.getValue();
-    LocalDate end = endDatePicker.getValue();
-    if (start != null && end != null && !end.isBefore(start)) {
-        long days = ChronoUnit.DAYS.between(start, end);
-        if (days == 0)
-            days = 1;
-        double dailyRate = Double.parseDouble(car.getPrice().replace("₹", "").replace(",", ""));
-        double total = days * dailyRate;
-
-        // Create reservation
-        Reservation reservation = new Reservation(
-                car.getName(),
-                start,
-                end,
-                "₹" + String.format("%.2f", total),
-                "Upcoming",
-                currentUser.getName());
-
-        // Create invoice WITH CUSTOMER NAME
-        String invoiceId = "INV-" + LocalDate.now().getYear() + "-"
-                + String.format("%03d", dbManager.getAllInvoices().size() + 1);
-        Invoice invoice = new Invoice(
-                invoiceId,
-                car.getName(),
-                start.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + " - "
-                        + end.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")),
-                "₹" + String.format("%.2f", total),
-                LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy")),
-                currentUser.getName()); // ADD THIS PARAMETER
-
-        // Save to database
-        if (dbManager.insertReservation(reservation) && dbManager.insertInvoice(invoice)) {
-            // Update car status
-            car.setStatus("Booked");
-            dbManager.updateCarStatus(car.getName(), "Booked");
-
-            dialog.close();
-            showSuccessDialog("Reservation created successfully!");
-
-            // Refresh the cars view
-            ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createAvailableCarsView());
-        } else {
-            showAlert("Error", "Failed to create reservation. Please try again.");
-        }
-    }
-});
-
+            LocalDate start = startDatePicker.getValue();
+            LocalDate end = endDatePicker.getValue();
+            if (start != null && end != null && !end.isBefore(start)) {
+                long days = Math.max(1, ChronoUnit.DAYS.between(start, end));
+                double dailyRate = Double.parseDouble(car.getPrice().replace("₹", "").replace(",", ""));
+                String totalCost = "₹" + String.format("%.2f", days * dailyRate);
+                dialog.close();
+                showBillingAndPaymentDialog(car, start, end, totalCost);
+            }
+        });
         buttonBox.getChildren().addAll(cancelBtn, confirmBtn);
 
         dialogContent.getChildren().addAll(carInfo, dateGrid, costBox, buttonBox);
         backdrop.getChildren().add(dialogContent);
 
-        Scene dialogScene = new Scene(backdrop, 800, 600);
-        dialog.setScene(dialogScene);
+        dialog.setScene(new Scene(backdrop, 800, 600));
         dialog.show();
+    }
+    
+    private void showBillingAndPaymentDialog(Car car, LocalDate startDate, LocalDate endDate, String totalCost) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(primaryStage);
+        dialog.setTitle("Billing and Payment");
+    
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #f5f5f5;");
+    
+        VBox summaryPane = new VBox(20);
+        summaryPane.setPadding(new Insets(40));
+        summaryPane.setStyle("-fx-background-color: white;");
+        summaryPane.setPrefWidth(350);
+        Label summaryTitle = new Label("Reservation Summary");
+        summaryTitle.setFont(Font.font("Arial", FontWeight.BOLD, 22));
+        VBox carDetails = new VBox(10);
+        Label carNameLabel = new Label(car.getName());
+        carNameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        Label carSpecsLabel = new Label(car.getSeats() + " | " + car.getTransmission() + " | " + car.getFuelType());
+        carSpecsLabel.setStyle("-fx-text-fill: #666;");
+        carDetails.getChildren().addAll(carNameLabel, carSpecsLabel);
+        VBox rentalDetails = new VBox(10);
+        rentalDetails.setPadding(new Insets(15, 0, 15, 0));
+        Label periodLabel = new Label("Rental Period");
+        periodLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        Label datesLabel = new Label(startDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy")) + " — " + endDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy")));
+        rentalDetails.getChildren().addAll(periodLabel, datesLabel);
+        VBox totalDetails = new VBox(5);
+        Label totalLabel = new Label("Total Amount");
+        totalLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        Label totalAmountLabel = new Label(totalCost);
+        totalAmountLabel.setFont(Font.font("Arial", FontWeight.BOLD, 28));
+        totalAmountLabel.setStyle("-fx-text-fill: #4285f4;");
+        totalDetails.getChildren().addAll(totalLabel, totalAmountLabel);
+        summaryPane.getChildren().addAll(summaryTitle, carDetails, new Separator(), rentalDetails, new Separator(), totalDetails);
+        root.setLeft(summaryPane);
+    
+        VBox paymentPane = new VBox(25);
+        paymentPane.setPadding(new Insets(40));
+        paymentPane.setAlignment(Pos.CENTER_LEFT);
+        Label paymentTitle = new Label("Select Payment Method");
+        paymentTitle.setFont(Font.font("Arial", FontWeight.BOLD, 22));
+        ToggleGroup paymentGroup = new ToggleGroup();
+        RadioButton upiRadio = createPaymentRadioButton("UPI / Google Pay / PhonePe", "/images/icons/upi.png", paymentGroup);
+        RadioButton qrRadio = createPaymentRadioButton("Scan QR Code", "/images/icons/qr.png", paymentGroup);
+        RadioButton cashOnDeliveryRadio = createPaymentRadioButton("Cash on Delivery", "/images/icons/cod.png", paymentGroup);
+        RadioButton cashOnReturnRadio = createPaymentRadioButton("Cash on Return", "/images/icons/cash.png", paymentGroup);
+        upiRadio.setSelected(true);
+        Button confirmAndPayBtn = new Button("✓ Confirm and Pay");
+        confirmAndPayBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-padding: 15 30; -fx-background-radius: 8; -fx-font-weight: bold; -fx-font-size: 16px;");
+        confirmAndPayBtn.setMaxWidth(Double.MAX_VALUE);
+        paymentPane.getChildren().addAll(paymentTitle, upiRadio, qrRadio, cashOnDeliveryRadio, cashOnReturnRadio, confirmAndPayBtn);
+        root.setCenter(paymentPane);
+    
+        confirmAndPayBtn.setOnAction(e -> {
+            RadioButton selected = (RadioButton) paymentGroup.getSelectedToggle();
+            if (selected == null) {
+                showAlert("Payment Error", "Please select a payment method.");
+                return;
+            }
+    
+            String invoiceId = "INV-" + LocalDate.now().getYear() + "-" + String.format("%03d", dbManager.getAllInvoices().size() + 1);
+            Invoice invoice = new Invoice(invoiceId, car.getName(),
+                startDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + " - " + endDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")),
+                totalCost, LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy")), currentUser.getName(), selected.getText());
+            Reservation reservation = new Reservation(car.getName(), startDate, endDate, totalCost, "Upcoming", currentUser.getName());
+    
+            if (dbManager.insertReservation(reservation) && dbManager.insertInvoice(invoice)) {
+                dbManager.updateCarStatus(car.getName(), "Booked");
+                dialog.close();
+                showPaymentSuccessDialog();
+                refreshAvailableCarsView(); // Real-time update
+            } else {
+                showAlert("Error", "Failed to create reservation. Please try again.");
+            }
+        });
+    
+        dialog.setScene(new Scene(root, 800, 500));
+        dialog.show();
+    }
+
+    private void showPaymentSuccessDialog() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(primaryStage);
+        dialog.setTitle("Payment Successful");
+
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(40));
+        content.setAlignment(Pos.CENTER);
+        content.setStyle("-fx-background-color: white;");
+
+        Label iconLabel = new Label("✅");
+        iconLabel.setFont(Font.font(48));
+
+        Label title = new Label("Reservation Confirmed!");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+
+        Label message = new Label("Thank you for your booking. Your reservation has been successfully recorded.");
+        message.setWrapText(true);
+        message.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
+        Button downloadBillBtn = new Button("📄 Download Bill");
+        downloadBillBtn.setStyle(
+                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 4; -fx-font-weight: bold;");
+        downloadBillBtn.setOnAction(e -> showAlert("Download Bill", "This is a placeholder for bill download functionality."));
+
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(e -> dialog.close());
+
+        HBox buttonBox = new HBox(15, downloadBillBtn, closeBtn);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        content.getChildren().addAll(iconLabel, title, message, buttonBox);
+
+        Scene scene = new Scene(content, 600, 300);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+    
+    private RadioButton createPaymentRadioButton(String text, String iconPath, ToggleGroup group) {
+        ImageView icon = new ImageView();
+        try {
+            Image image = new Image(getClass().getResourceAsStream(iconPath));
+            icon.setImage(image);
+            icon.setFitWidth(24);
+            icon.setFitHeight(24);
+        } catch (Exception e) {
+            System.err.println("Could not load icon: " + iconPath);
+        }
+    
+        RadioButton radioButton = new RadioButton(text);
+        radioButton.setToggleGroup(group);
+        radioButton.setGraphic(icon);
+        radioButton.setGraphicTextGap(10);
+        radioButton.setFont(Font.font("Arial", 14));
+        return radioButton;
     }
 
     private VBox createReservationsView() {
     VBox content = new VBox(20);
     content.setPadding(new Insets(30));
 
-    // Header
     HBox headerBox = new HBox();
     headerBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -1448,56 +1540,46 @@ public class RentWheelsApp extends Application {
 
             ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createReservationsView());
             showSuccessDialog("All reservations cleared! Cars are now available for booking.");
+            refreshAvailableCarsView();
         }
     });
 
     headerBox.getChildren().addAll(title, spacer, clearAllBtn);
 
-    // Get reservations from database
     List<Reservation> reservationsList = isAdmin() ? 
         dbManager.getAllReservations() : 
         dbManager.getUserReservations(currentUser.getName());
     
-    System.out.println("Displaying " + reservationsList.size() + " reservations");
-
-    // Create table
     TableView<Reservation> table = new TableView<>();
     table.setItems(FXCollections.observableArrayList(reservationsList));
     table.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0;");
     
-    // If no data, show placeholder
     if (reservationsList.isEmpty()) {
         Label noDataLabel = new Label("No reservations found. Book a car to see your reservations here!");
         noDataLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 14px; -fx-padding: 50px;");
         table.setPlaceholder(noDataLabel);
     }
 
-    // Car column
     TableColumn<Reservation, String> carCol = new TableColumn<>("Car");
     carCol.setCellValueFactory(new PropertyValueFactory<>("carName"));
     carCol.setPrefWidth(200);
 
-    // Start Date column
     TableColumn<Reservation, String> startCol = new TableColumn<>("Start Date");
     startCol.setCellValueFactory(new PropertyValueFactory<>("startDate"));
     startCol.setPrefWidth(150);
 
-    // End Date column
     TableColumn<Reservation, String> endCol = new TableColumn<>("End Date");
     endCol.setCellValueFactory(new PropertyValueFactory<>("endDate"));
     endCol.setPrefWidth(150);
 
-    // Total Cost column
     TableColumn<Reservation, String> totalCol = new TableColumn<>("Total Cost");
     totalCol.setCellValueFactory(new PropertyValueFactory<>("totalCost"));
     totalCol.setPrefWidth(120);
 
-    // Status column
     TableColumn<Reservation, String> statusCol = new TableColumn<>("Status");
     statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
     statusCol.setPrefWidth(100);
 
-    // Actions column
     TableColumn<Reservation, Void> actionsCol = new TableColumn<>("Actions");
     actionsCol.setPrefWidth(200);
 
@@ -1513,43 +1595,29 @@ public class RentWheelsApp extends Application {
                     "-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 3; -fx-font-size: 11px;");
 
             viewInvoiceBtn.setOnAction(e -> {
-                Reservation reservation = getTableView().getItems().get(getIndex());
-                
-                Invoice invoice = dbManager.getInvoiceByReservation(
-                    reservation.getCarName(), 
-                    reservation.getCustomerName()
-                );
-                
-                if (invoice != null) {
-                    showInvoiceDetailsDialog(invoice, reservation);
-                } else {
-                    showAlert("Error", "Invoice not found for this reservation.");
-                }
+                Reservation r = getTableView().getItems().get(getIndex());
+                Invoice i = dbManager.getInvoiceByReservation(r.getCarName(), r.getCustomerName());
+                if (i != null) showInvoiceDetailsDialog(i, r); else showAlert("Error", "Invoice not found.");
             });
 
             cancelBtn.setOnAction(e -> {
                 Reservation reservation = getTableView().getItems().get(getIndex());
-
                 Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
                 confirmAlert.setTitle("Cancel Reservation");
                 confirmAlert.setHeaderText(null);
-                confirmAlert.setContentText(
-                        "Are you sure you want to cancel the reservation for " + reservation.getCarName() + "?");
+                confirmAlert.setContentText("Are you sure you want to cancel the reservation for " + reservation.getCarName() + "?");
 
                 if (confirmAlert.showAndWait().get() == ButtonType.OK) {
                     if (dbManager.updateCarStatus(reservation.getCarName(), "Available") &&
                             dbManager.deleteReservation(reservation.getCarName(), reservation.getCustomerName())) {
-
-                        showSuccessDialog("Reservation cancelled successfully! " + reservation.getCarName()
-                                + " is now available for booking.");
-
+                        showSuccessDialog("Reservation cancelled successfully!");
                         ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createReservationsView());
+                        refreshAvailableCarsView(); // Real-time update
                     } else {
-                        showAlert("Error", "Failed to cancel reservation. Please try again.");
+                        showAlert("Error", "Failed to cancel reservation.");
                     }
                 }
             });
-
             buttonBox.getChildren().addAll(viewInvoiceBtn, cancelBtn);
         }
 
@@ -1561,163 +1629,16 @@ public class RentWheelsApp extends Application {
     });
 
     table.getColumns().addAll(carCol, startCol, endCol, totalCol, statusCol, actionsCol);
-
     content.getChildren().addAll(headerBox, table);
     VBox.setVgrow(table, Priority.ALWAYS);
 
     return content;
 }
 
-    private void showInvoiceDialog(Reservation reservation) {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.initOwner(primaryStage);
-        dialog.setTitle("Invoice");
-
-        VBox backdrop = new VBox();
-        backdrop.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5);");
-        backdrop.setAlignment(Pos.CENTER);
-
-        VBox dialogContent = new VBox(20);
-        dialogContent.setPadding(new Insets(30));
-        dialogContent.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
-        dialogContent.setMaxWidth(500);
-
-        // Header
-        HBox header = new HBox();
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox companyInfo = new VBox(5);
-        Label companyName = new Label("🚗 RentWheels");
-        companyName.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-        companyName.setStyle("-fx-text-fill: #4285f4;");
-
-        Label companyDesc = new Label("Premium Car Rental Service");
-        companyDesc.setStyle("-fx-text-fill: #666;");
-
-        companyInfo.getChildren().addAll(companyName, companyDesc);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        VBox invoiceInfo = new VBox(5);
-        invoiceInfo.setAlignment(Pos.TOP_RIGHT);
-
-        Label invoiceTitle = new Label("INVOICE");
-        invoiceTitle.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
-        String invoiceId = "INV-" + LocalDate.now().getYear() + "-001";
-        Label invoiceIdLabel = new Label(invoiceId);
-        Label issuedLabel = new Label("Issued: " + LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
-        issuedLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
-
-        invoiceInfo.getChildren().addAll(invoiceTitle, invoiceIdLabel, issuedLabel);
-        header.getChildren().addAll(companyInfo, spacer, invoiceInfo);
-
-        // Billed to
-        VBox billedTo = new VBox(5);
-        Label billedToLabel = new Label("Billed To:");
-        billedToLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-        Label customerName = new Label(currentUser != null ? currentUser.getName() : "Regular User");
-        Label customerEmail = new Label(currentUser != null ? currentUser.getEmail() : "user@example.com");
-        customerEmail.setStyle("-fx-text-fill: #666;");
-
-        billedTo.getChildren().addAll(billedToLabel, customerName, customerEmail);
-
-        // Invoice details
-        VBox details = new VBox(15);
-        Label detailsLabel = new Label("Description");
-        detailsLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-        HBox itemRow = new HBox();
-        itemRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label itemDesc = new Label(reservation.getCarName() + " - Rental (" + reservation.getStartDate() + " - "
-                + reservation.getEndDate() + ")");
-        itemDesc.setPrefWidth(300);
-
-        Region itemSpacer = new Region();
-        HBox.setHgrow(itemSpacer, Priority.ALWAYS);
-
-        Label itemAmount = new Label("Amount");
-        itemAmount.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-        itemRow.getChildren().addAll(itemDesc, itemSpacer, itemAmount);
-
-        HBox amountRow = new HBox();
-        amountRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label amount = new Label(reservation.getTotalCost());
-        amount.setPrefWidth(300);
-
-        Region amountSpacer = new Region();
-        HBox.setHgrow(amountSpacer, Priority.ALWAYS);
-
-        Label amountValue = new Label(reservation.getTotalCost());
-        amountValue.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-        amountRow.getChildren().addAll(amount, amountSpacer, amountValue);
-
-        // Total
-        Separator separator = new Separator();
-
-        HBox totalRow = new HBox();
-        totalRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label totalLabel = new Label("Total");
-        totalLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-        totalLabel.setPrefWidth(300);
-
-        Region totalSpacer = new Region();
-        HBox.setHgrow(totalSpacer, Priority.ALWAYS);
-
-        Label totalAmount = new Label(reservation.getTotalCost());
-        totalAmount.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
-        totalRow.getChildren().addAll(totalLabel, totalSpacer, totalAmount);
-
-        details.getChildren().addAll(detailsLabel, itemRow, amountRow, separator, totalRow);
-
-        // Thank you message
-        Label thankYou = new Label("Thank you for choosing RentWheels!");
-        thankYou.setStyle("-fx-text-fill: #666; -fx-font-style: italic; -fx-alignment: center;");
-        thankYou.setAlignment(Pos.CENTER);
-
-        // Buttons
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button closeBtn = new Button("Close");
-        closeBtn.setStyle(
-                "-fx-background-color: #f5f5f5; -fx-text-fill: #333; -fx-padding: 10 20; -fx-background-radius: 4;");
-        closeBtn.setOnAction(e -> dialog.close());
-
-        Button downloadPdfBtn = new Button("📄 Download PDF");
-        downloadPdfBtn.setStyle(
-                "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 4; -fx-font-weight: bold;");
-        downloadPdfBtn.setOnAction(e -> showAlert("Download", "PDF download would be implemented here"));
-
-        Button downloadTxtBtn = new Button("📝 Download Text");
-        downloadTxtBtn.setStyle(
-                "-fx-background-color: #34a853; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 4; -fx-font-weight: bold;");
-        downloadTxtBtn.setOnAction(e -> showAlert("Download", "Text download would be implemented here"));
-
-        buttonBox.getChildren().addAll(closeBtn, downloadPdfBtn, downloadTxtBtn);
-
-        dialogContent.getChildren().addAll(header, billedTo, details, thankYou, buttonBox);
-        backdrop.getChildren().add(dialogContent);
-
-        Scene dialogScene = new Scene(backdrop, 800, 600);
-        dialog.setScene(dialogScene);
-        dialog.show();
-    }
-
     private VBox createInvoicesView() {
     VBox content = new VBox(20);
     content.setPadding(new Insets(30));
 
-    // Header
     HBox headerBox = new HBox();
     headerBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -1738,16 +1659,11 @@ public class RentWheelsApp extends Application {
         confirmAlert.setContentText("Are you sure you want to clear all invoices?");
 
         if (confirmAlert.showAndWait().get() == ButtonType.OK) {
-            if (isAdmin()) {
-                List<Invoice> allInvoices = dbManager.getAllInvoices();
-                for (Invoice invoice : allInvoices) {
-                    dbManager.deleteInvoice(invoice.getInvoiceId());
-                }
-            } else {
-                List<Invoice> userInvoices = dbManager.getUserInvoices(currentUser.getName());
-                for (Invoice invoice : userInvoices) {
-                    dbManager.deleteInvoice(invoice.getInvoiceId());
-                }
+            List<Invoice> invoicesToDelete = isAdmin() ? 
+                dbManager.getAllInvoices() : 
+                dbManager.getUserInvoices(currentUser.getName());
+            for (Invoice invoice : invoicesToDelete) {
+                dbManager.deleteInvoice(invoice.getInvoiceId());
             }
             ((BorderPane) primaryStage.getScene().getRoot()).setCenter(createInvoicesView());
             showSuccessDialog("Invoices cleared successfully!");
@@ -1756,77 +1672,66 @@ public class RentWheelsApp extends Application {
 
     headerBox.getChildren().addAll(title, spacer, clearAllBtn);
 
-    // Get invoices from database
     List<Invoice> invoicesList = isAdmin() ? 
         dbManager.getAllInvoices() : 
         dbManager.getUserInvoices(currentUser.getName());
     
-    System.out.println("Displaying " + invoicesList.size() + " invoices for user: " + 
-        (currentUser != null ? currentUser.getName() : "null"));
-
-    // Create table
     TableView<Invoice> table = new TableView<>();
     table.setItems(FXCollections.observableArrayList(invoicesList));
     table.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0;");
     
-    // If no data, show placeholder
     if (invoicesList.isEmpty()) {
         Label noDataLabel = new Label("No invoices found. Your invoices will appear here after making reservations.");
         noDataLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 14px; -fx-padding: 50px;");
         table.setPlaceholder(noDataLabel);
     }
 
-    // Invoice # column
     TableColumn<Invoice, String> invoiceCol = new TableColumn<>("Invoice #");
     invoiceCol.setCellValueFactory(new PropertyValueFactory<>("invoiceId"));
     invoiceCol.setPrefWidth(150);
 
-    // Car column
     TableColumn<Invoice, String> carCol = new TableColumn<>("Car");
     carCol.setCellValueFactory(new PropertyValueFactory<>("carName"));
     carCol.setPrefWidth(200);
 
-    // Rental Period column
     TableColumn<Invoice, String> periodCol = new TableColumn<>("Rental Period");
     periodCol.setCellValueFactory(new PropertyValueFactory<>("rentalPeriod"));
     periodCol.setPrefWidth(300);
 
-    // Total column
     TableColumn<Invoice, String> totalCol = new TableColumn<>("Total");
     totalCol.setCellValueFactory(new PropertyValueFactory<>("total"));
     totalCol.setPrefWidth(120);
 
-    // Date column
     TableColumn<Invoice, String> dateCol = new TableColumn<>("Date");
     dateCol.setCellValueFactory(new PropertyValueFactory<>("date"));
     dateCol.setPrefWidth(150);
 
-    // Actions column
     TableColumn<Invoice, Void> actionsCol = new TableColumn<>("Actions");
-    actionsCol.setPrefWidth(120);
+    actionsCol.setPrefWidth(250);
     
     actionsCol.setCellFactory(col -> new TableCell<Invoice, Void>() {
-        private final Button viewBtn = new Button("👁️ View");
+        private final Button viewBtn = new Button("👁️ View Details");
+        private final Button downloadBtn = new Button("📄 Download Bill");
+        private final HBox buttonBox = new HBox(5, viewBtn, downloadBtn);
         
         {
             viewBtn.setStyle(
+                    "-fx-background-color: #17a2b8; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 3; -fx-font-size: 11px;");
+            downloadBtn.setStyle(
                     "-fx-background-color: #4285f4; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 3; -fx-font-size: 11px;");
             
-            viewBtn.setOnAction(e -> {
-                Invoice invoice = getTableView().getItems().get(getIndex());
-                showInvoiceDetailsDialog(invoice, null);
-            });
+            viewBtn.setOnAction(e -> showInvoiceDetailsDialog(getTableView().getItems().get(getIndex()), null));
+            downloadBtn.setOnAction(e -> showAlert("Download Bill", "This is a placeholder for bill download functionality."));
         }
         
         @Override
         protected void updateItem(Void item, boolean empty) {
             super.updateItem(item, empty);
-            setGraphic(empty ? null : viewBtn);
+            setGraphic(empty ? null : buttonBox);
         }
     });
 
     table.getColumns().addAll(invoiceCol, carCol, periodCol, totalCol, dateCol, actionsCol);
-
     content.getChildren().addAll(headerBox, table);
     VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -1848,138 +1753,86 @@ public class RentWheelsApp extends Application {
     dialogContent.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
     dialogContent.setMaxWidth(500);
 
-    // Header
     HBox header = new HBox();
     header.setAlignment(Pos.CENTER_LEFT);
-
     VBox companyInfo = new VBox(5);
     Label companyName = new Label("🚗 RentWheels");
     companyName.setFont(Font.font("Arial", FontWeight.BOLD, 18));
     companyName.setStyle("-fx-text-fill: #4285f4;");
-
     Label companyDesc = new Label("Premium Car Rental Service");
     companyDesc.setStyle("-fx-text-fill: #666;");
-
     companyInfo.getChildren().addAll(companyName, companyDesc);
-
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
-
     VBox invoiceInfo = new VBox(5);
     invoiceInfo.setAlignment(Pos.TOP_RIGHT);
-
     Label invoiceTitle = new Label("INVOICE");
     invoiceTitle.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
     Label invoiceIdLabel = new Label(invoice.getInvoiceId());
     Label issuedLabel = new Label("Issued: " + invoice.getDate());
     issuedLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
-
     invoiceInfo.getChildren().addAll(invoiceTitle, invoiceIdLabel, issuedLabel);
     header.getChildren().addAll(companyInfo, spacer, invoiceInfo);
 
-    // Billed to
     VBox billedTo = new VBox(5);
     Label billedToLabel = new Label("Billed To:");
     billedToLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-    // Use invoice customer name if available, otherwise use current user
-    String customerName = invoice.getCustomerName() != null ? 
-        invoice.getCustomerName() : 
-        (currentUser != null ? currentUser.getName() : "Customer");
-    
+    String customerName = invoice.getCustomerName() != null ? invoice.getCustomerName() : (currentUser != null ? currentUser.getName() : "Customer");
     Label customerNameLabel = new Label(customerName);
-    
-    // Try to get customer email from database
     String customerEmail = "";
-    List<User> allUsers = dbManager.getAllUsers();
-    for (User user : allUsers) {
+    for (User user : dbManager.getAllUsers()) {
         if (user.getName().equals(customerName)) {
             customerEmail = user.getEmail();
             break;
         }
     }
-    
     Label customerEmailLabel = new Label(customerEmail);
     customerEmailLabel.setStyle("-fx-text-fill: #666;");
-
     billedTo.getChildren().addAll(billedToLabel, customerNameLabel, customerEmailLabel);
 
-    // Invoice details
     VBox details = new VBox(15);
-    Label detailsLabel = new Label("Description");
-    detailsLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
+    details.getChildren().add(new Label("Description") {{ setFont(Font.font("Arial", FontWeight.BOLD, 14)); }});
     HBox itemRow = new HBox();
     itemRow.setAlignment(Pos.CENTER_LEFT);
-
     Label itemDesc = new Label(invoice.getCarName() + " - Rental (" + invoice.getRentalPeriod() + ")");
     itemDesc.setPrefWidth(300);
-
     Region itemSpacer = new Region();
     HBox.setHgrow(itemSpacer, Priority.ALWAYS);
-
-    Label itemAmount = new Label("Amount");
-    itemAmount.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-    itemRow.getChildren().addAll(itemDesc, itemSpacer, itemAmount);
-
+    itemRow.getChildren().addAll(itemDesc, itemSpacer, new Label("Amount") {{ setFont(Font.font("Arial", FontWeight.BOLD, 14)); }});
     HBox amountRow = new HBox();
     amountRow.setAlignment(Pos.CENTER_LEFT);
-
     Label amount = new Label(invoice.getCarName());
     amount.setPrefWidth(300);
-
     Region amountSpacer = new Region();
     HBox.setHgrow(amountSpacer, Priority.ALWAYS);
-
-    Label amountValue = new Label(invoice.getTotal());
-    amountValue.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-    amountRow.getChildren().addAll(amount, amountSpacer, amountValue);
-
-    // Total
-    Separator separator = new Separator();
-
+    amountRow.getChildren().addAll(amount, amountSpacer, new Label(invoice.getTotal()) {{ setFont(Font.font("Arial", FontWeight.BOLD, 14)); }});
     HBox totalRow = new HBox();
     totalRow.setAlignment(Pos.CENTER_LEFT);
-
     Label totalLabel = new Label("Total");
     totalLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
     totalLabel.setPrefWidth(300);
-
     Region totalSpacer = new Region();
     HBox.setHgrow(totalSpacer, Priority.ALWAYS);
-
     Label totalAmount = new Label(invoice.getTotal());
     totalAmount.setFont(Font.font("Arial", FontWeight.BOLD, 16));
     totalAmount.setStyle("-fx-text-fill: #4285f4;");
-
     totalRow.getChildren().addAll(totalLabel, totalSpacer, totalAmount);
+    details.getChildren().addAll(itemRow, amountRow, new Separator(), totalRow);
 
-    details.getChildren().addAll(detailsLabel, itemRow, amountRow, separator, totalRow);
-
-    // Thank you message
     Label thankYou = new Label("Thank you for choosing RentWheels!");
     thankYou.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
     thankYou.setAlignment(Pos.CENTER);
 
-    // Buttons
     HBox buttonBox = new HBox(15);
     buttonBox.setAlignment(Pos.CENTER);
-
     Button closeBtn = new Button("Close");
-    closeBtn.setStyle(
-            "-fx-background-color: #f5f5f5; -fx-text-fill: #333; -fx-padding: 10 20; -fx-background-radius: 4;");
+    closeBtn.setStyle("-fx-background-color: #f5f5f5; -fx-text-fill: #333; -fx-padding: 10 20; -fx-background-radius: 4;");
     closeBtn.setOnAction(e -> dialog.close());
-
     buttonBox.getChildren().add(closeBtn);
 
     dialogContent.getChildren().addAll(header, billedTo, details, thankYou, buttonBox);
     backdrop.getChildren().add(dialogContent);
-
-    Scene dialogScene = new Scene(backdrop, 800, 600);
-    dialog.setScene(dialogScene);
+    dialog.setScene(new Scene(backdrop, 800, 600));
     dialog.show();
 }
 
@@ -2005,238 +1858,42 @@ public class RentWheelsApp extends Application {
 
     private void comprehensiveDebug() {
     System.out.println("\n========== COMPREHENSIVE DATABASE DEBUG ==========");
-    
-    // Check cars
     List<Car> cars = dbManager.getAllCars();
     System.out.println("Total Cars: " + cars.size());
-    for (int i = 0; i < Math.min(3, cars.size()); i++) {
-        Car car = cars.get(i);
-        System.out.println("  Car " + i + ": " + car.getName() + " | Price: " + car.getPrice() + 
-                         " | Seats: " + car.getSeats() + " | Status: " + car.getStatus());
-    }
+    cars.stream().limit(3).forEach(car -> 
+        System.out.println("  Car: " + car.getName() + " | Price: " + car.getPrice() + " | Status: " + car.getStatus()));
     
-    // Check users
     List<User> users = dbManager.getAllUsers();
     System.out.println("\nTotal Users: " + users.size());
-    for (User user : users) {
-        System.out.println("  User: " + user.getName() + " | Email: " + user.getEmail() + 
-                         " | Username: " + user.getUsername());
-    }
+    users.forEach(user -> 
+        System.out.println("  User: " + user.getName() + " | Username: " + user.getUsername()));
     
-    // Check reservations
     List<Reservation> reservations = dbManager.getAllReservations();
     System.out.println("\nTotal Reservations: " + reservations.size());
-    for (Reservation res : reservations) {
-        System.out.println("  Reservation: " + res.getCarName() + " | Customer: " + res.getCustomerName() + 
-                         " | Status: " + res.getStatus());
-    }
+    reservations.forEach(res -> 
+        System.out.println("  Reservation: " + res.getCarName() + " | Customer: " + res.getCustomerName()));
     
-    // Check invoices
     List<Invoice> invoices = dbManager.getAllInvoices();
     System.out.println("\nTotal Invoices: " + invoices.size());
-    for (Invoice inv : invoices) {
-        System.out.println("  Invoice: " + inv.getInvoiceId() + " | Car: " + inv.getCarName() + 
-                         " | Customer: " + inv.getCustomerName());
-    }
-    
+    invoices.forEach(inv -> 
+        System.out.println("  Invoice: " + inv.getInvoiceId() + " | Customer: " + inv.getCustomerName()));
     System.out.println("==================================================\n");
 }
-}
 
-
-
-
-// Data Models
-class User {
-    private String name;
-    private String email;
-    private String username;
-    private String password;
-
-    public User(String name, String email, String username, String password) {
-        this.name = name;
-        this.email = email;
-        this.username = username;
-        this.password = password;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
+    private void refreshAvailableCarsView() {
+        Platform.runLater(() -> {
+            allCars = dbManager.getAllCars();
+            if (carSearchField != null) { // Ensure controls are initialized
+                filterAndDisplayCars(
+                    carSearchField.getText(),
+                    seatsFilterCombo.getValue(),
+                    transmissionFilterCombo.getValue(),
+                    fuelFilterCombo.getValue(),
+                    maxPriceFilterField.getText()
+                );
+            }
+        });
     }
 }
 
-class Car {
-    private String name;
-    private String price;
-    private String seats;
-    private String transmission;
-    private String fuelType;
-    private String status;
-    private String imagePath;
-
-    public Car(String name, String price, String seats, String transmission, String fuelType, String status,
-            String imagePath) {
-        this.name = name;
-        this.price = price;
-        this.seats = seats;
-        this.transmission = transmission;
-        this.fuelType = fuelType;
-        this.status = status;
-        this.imagePath = imagePath;
-    }
-
-    // Getters and setters
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    
-    public String getPrice() { return price; }
-    public void setPrice(String price) { this.price = price; }
-    
-    public String getSeats() { return seats; }
-    public void setSeats(String seats) { this.seats = seats; }
-    
-    public String getTransmission() { return transmission; }
-    public void setTransmission(String transmission) { this.transmission = transmission; }
-    
-    public String getFuelType() { return fuelType; }
-    public void setFuelType(String fuelType) { this.fuelType = fuelType; }
-    
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    
-    public String getImagePath() { return imagePath; }
-}
-
-class Reservation {
-    private String carName;
-    private String startDate;
-    private String endDate;
-    private String totalCost;
-    private String status;
-    private String customerName;
-    private LocalDate actualStartDate;
-    private LocalDate actualEndDate;
-
-    // NEW CONSTRUCTOR WITH LocalDate PARAMETERS:
-    public Reservation(String carName, LocalDate startDate, LocalDate endDate, String totalCost, String status,
-            String customerName) {
-        this.carName = carName;
-        this.actualStartDate = startDate;
-        this.actualEndDate = endDate;
-        this.startDate = startDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
-        this.endDate = endDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
-        this.totalCost = totalCost;
-        this.status = status;
-        this.customerName = customerName;
-    }
-
-    // Getters
-    public String getCarName() {
-        return carName;
-    }
-
-    public String getStartDate() {
-        return startDate;
-    }
-
-    public String getEndDate() {
-        return endDate;
-    }
-
-    public String getTotalCost() {
-        return totalCost;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public String getCustomerName() {
-        return customerName;
-    }
-
-    public LocalDate getActualStartDate() {
-        return actualStartDate;
-    }
-
-    public LocalDate getActualEndDate() {
-        return actualEndDate;
-    }
-
-    // Setters
-
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public void setActualStartDate(LocalDate actualStartDate) {
-        this.actualStartDate = actualStartDate;
-        this.startDate = actualStartDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
-    }
-
-    public void setActualEndDate(LocalDate actualEndDate) {
-        this.actualEndDate = actualEndDate;
-        this.endDate = actualEndDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
-    }
-
-}
-
-class Invoice {
-    private String invoiceId;
-    private String carName;
-    private String rentalPeriod;
-    private String total;
-    private String date;
-    private String customerName;
-
-    public Invoice(String invoiceId, String carName, String rentalPeriod, String total, String date, String customerName) {
-        this.invoiceId = invoiceId;
-        this.carName = carName;
-        this.rentalPeriod = rentalPeriod;
-        this.total = total;
-        this.date = date;
-        this.customerName = customerName;
-    }
-
-    // Getters
-    public String getInvoiceId() {
-        return invoiceId;
-    }
-
-    public String getCarName() {
-        return carName;
-    }
-
-    public String getRentalPeriod() {
-        return rentalPeriod;
-    }
-
-    public String getTotal() {
-        return total;
-    }
-
-    public String getDate() {
-        return date;
-    }
-
-    public String getCustomerName() {
-        return customerName;
-    }
-}
 
