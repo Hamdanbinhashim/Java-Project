@@ -31,13 +31,6 @@ public class DatabaseManager {
     }
 
     private void createTables() throws SQLException {
-    // Drop existing tables first (for clean recreation)
-    try (Statement stmt = connection.createStatement()) {
-        stmt.execute("DROP TABLE IF EXISTS invoices");
-        stmt.execute("DROP TABLE IF EXISTS reservations");
-        stmt.execute("DROP TABLE IF EXISTS cars");
-        stmt.execute("DROP TABLE IF EXISTS users");
-    }
     
     // Users table
     String createUsersTable = """
@@ -90,6 +83,7 @@ public class DatabaseManager {
                     total TEXT NOT NULL,
                     issue_date TEXT NOT NULL,
                     customer_name TEXT NOT NULL,
+                    payment_method TEXT,
                     created_date DATE DEFAULT CURRENT_DATE
                 )
             """;
@@ -127,32 +121,32 @@ public class DatabaseManager {
     private void insertDefaultCars() throws SQLException {
         List<Car> defaultCars = List.of(
                 new Car("Tesla Model S", "₹10020.00", "5 Seats", "Automatic", "Electric", "Available","tesla_model_s.jpg"),
-                new Car("BMW X5", "₹7932.50", "5 Seats", "Automatic", "Hybrid", "Available", "bmw_x5.jpg"),
+                new Car("BMW X5", "₹7932.00", "5 Seats", "Automatic", "Hybrid", "Available", "bmw_x5.jpg"),
                 new Car("Mercedes-Benz E-Class", "₹9185.00", "5 Seats", "Automatic", "Petrol", "Available","mercedes_e_class.jpg"),
-                new Car("Audi A4", "₹7097.50", "5 Seats", "Automatic", "Diesel", "Available", "audi_a4.jpg"),
+                new Car("Audi A4", "₹7097.00", "5 Seats", "Automatic", "Diesel", "Available", "audi_a4.jpg"),
                 new Car("Toyota Camry", "₹6845.00", "5 Seats", "Automatic", "Hybrid", "Available", "toyota_camry.jpg"),
                 new Car("Ford Mustang", "₹8350.00", "4 Seats", "Manual", "Petrol", "Available", "ford_mustang.jpg"),
                 new Car("BMW M340i", "₹9350.00", "5 Seats", "Automatic", "Petrol", "Available","bmw_m340i.jpg"),
-                new Car("Lamborghini Urus", "₹25200.50", "5 Seats", "Automatic", "Petrol", "Available", "lamborghini_urus.jpg"),
-                new Car(" Porsche 911 Turbo S (992)", "₹20580.00", "2 Seats", "Automatic", "Petrol", "Available","porsche_911_turbo_s.jpg"),
-                new Car("Audi Q8", "₹8200.50", "5 Seats", "Automatic", "Petrol", "Available", "audi_q8.jpg"),
+                new Car("Lamborghini Urus", "₹25200.00", "5 Seats", "Automatic", "Petrol", "Available", "lamborghini_urus.jpg"),
+                new Car("Porsche 911 Turbo S (992)", "₹20580.00", "2 Seats", "Automatic", "Petrol", "Available","porsche_911_turbo_s.jpg"),
+                new Car("Audi Q8", "₹8200.00", "5 Seats", "Automatic", "Petrol", "Available", "audi_q8.jpg"),
                 new Car("BYD Seal", "₹6845.00", "5 Seats", "Automatic", "Electric", "Available", "byd_seal.jpg"),
                 new Car("Ferrari 488 Pista", "₹24300.00", "2 Seats", "Automatic", "Petrol", "Available", "ferrari_488_pista.jpg"),
                 new Car("Porsche Taycan", "₹10020.00", "4 Seats", "Automatic", "Electric", "Available","porsche_tycan.jpg"),
-                new Car("Lexus ES 300h", "₹7999.50", "4 Seats", "Automatic", "Hybrid", "Available", "lexus_es_300h.jpg"),
+                new Car("Lexus ES 300h", "₹7999.00", "4 Seats", "Automatic", "Hybrid", "Available", "lexus_es_300h.jpg"),
                 new Car("Range Rover Velar", "₹8800.00", "5 Seats", "Automatic", "Petrol", "Available","range_rover_velar.jpg"),
-                new Car("Toyota Land Cruiser", "₹10133.50", "5 Seats", "Automatic", "Diesel", "Available", "toyota_land_cruiser.jpg"),
+                new Car("Toyota Land Cruiser", "₹10133.00", "5 Seats", "Automatic", "Diesel", "Available", "toyota_land_cruiser.jpg"),
                 new Car("Range Rover SVR", "₹7990.00", "5 Seats", "Automatic", "Petrol", "Available", "range_rover_svr.jpg"),
                 new Car(" BMW M2 ", "₹12350.00", "4 Seats", "Manual", "Petrol", "Available", "bmw_m2.jpg"),
                 new Car("Audi RS7", "₹13500.00", "5 Seats", "Automatic", "Petrol", "Available","audi_rs7.jpg"),
-                new Car("Jaguar f-pace", "₹7800.50", "5 Seats", "Automatic", "Petrol", "Available", "jaguar_f-pace.jpg"),
+                new Car("Jaguar f-pace", "₹7800.00", "5 Seats", "Automatic", "Petrol", "Available", "jaguar_f-pace.jpg"),
                 new Car("Lamborghini Huracan Sterrato", "₹24340.00", "2 Seats", "Automatic", "Petrol", "Available","lamborghini_huracan.jpg"),
-                new Car("Toyota Vellfire ", "₹8900.50", "7 Seats", "Automatic", "Petrol", "Available", "toyota_vellfire.jpg"),
+                new Car("Toyota Vellfire ", "₹8900.00", "7 Seats", "Automatic", "Petrol", "Available", "toyota_vellfire.jpg"),
                 new Car(" Maserati Quattroporte", "₹6788.00", "4 Seats", "Automatic", "Petrol", "Available", "maserati_quattroporte.jpg"),
                 new Car("BMW M4", "₹28352.00", "2 Seats", "Automatic", "Petrol", "Available", "bmw_m4.jpg"),
                 new Car(" Mercedes G Wagon ", "₹23456.00", "5 Seats", "Automatic", "Petrol", "Available", "mercedes_g_wagon.jpg"),
                 new Car("Mini Cooper S", "₹8998.00", "4 Seats", "Automatic", "Petrol", "Available","mii_cooper_s.jpg"),
-                new Car("Jeep Wrangler", "8500.50", "5 Seats", "Automatic", "Petrol", "Available", "jeep_wrangler.jpg"));
+                new Car("Jeep Wrangler", "₹8500.00", "5 Seats", "Automatic", "Petrol", "Available", "jeep_wrangler.jpg"));
 
         for (Car car : defaultCars) {
             insertCar(car);
@@ -409,7 +403,7 @@ public class DatabaseManager {
 
     // Invoice operations
     public boolean insertInvoice(Invoice invoice) {
-    String sql = "INSERT INTO invoices (invoice_id, car_name, rental_period, total, issue_date, customer_name) VALUES (?, ?, ?, ?, ?, ?)";
+    String sql = "INSERT INTO invoices (invoice_id, car_name, rental_period, total, issue_date, customer_name, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)";
     try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
         pstmt.setString(1, invoice.getInvoiceId());
         pstmt.setString(2, invoice.getCarName());
@@ -417,6 +411,7 @@ public class DatabaseManager {
         pstmt.setString(4, invoice.getTotal());
         pstmt.setString(5, invoice.getDate());
         pstmt.setString(6, invoice.getCustomerName());
+        pstmt.setString(7, invoice.getPaymentMethod());
         pstmt.executeUpdate();
         return true;
     } catch (SQLException e) {
@@ -438,7 +433,8 @@ public class DatabaseManager {
                         rs.getString("rental_period"),
                         rs.getString("total"),
                         rs.getString("issue_date"),
-                        rs.getString("customer_name")));
+                        rs.getString("customer_name"),
+                        rs.getString("payment_method")));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -460,7 +456,8 @@ public class DatabaseManager {
                     rs.getString("rental_period"),
                     rs.getString("total"),
                     rs.getString("issue_date"),
-                    rs.getString("customer_name")));
+                    rs.getString("customer_name"),
+                    rs.getString("payment_method")));
         }
     } catch (SQLException e) {
         e.printStackTrace();
@@ -482,7 +479,8 @@ public Invoice getInvoiceByReservation(String carName, String customerName) {
                     rs.getString("rental_period"),
                     rs.getString("total"),
                     rs.getString("issue_date"),
-                    rs.getString("customer_name"));
+                    rs.getString("customer_name"),
+                    rs.getString("payment_method"));
         }
     } catch (SQLException e) {
         e.printStackTrace();
@@ -512,15 +510,5 @@ public Invoice getInvoiceByReservation(String carName, String customerName) {
         }
     }
 
-    // Method to clear all data (for testing purposes)
-    public void clearAllData() {
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("DELETE FROM invoices");
-            stmt.execute("DELETE FROM reservations");
-            stmt.execute("DELETE FROM cars");
-            stmt.execute("DELETE FROM users WHERE username != 'ADMIN'");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 }
+
